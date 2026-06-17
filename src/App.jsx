@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ThemeProvider } from 'styled-components'
 import { jsPDF } from 'jspdf'
-import { supabase } from './utils/supabase'
+import { supabase } from './lib/supabase'
 import { GlobalStyles } from './styles/global'
 import { theme } from './styles/theme'
 import Banner from './components/Banner'
