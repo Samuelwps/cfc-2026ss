@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ThemeProvider } from 'styled-components'
+import styled, { ThemeProvider } from 'styled-components'
 import { jsPDF } from 'jspdf'
 import { supabase } from './lib/supabase'
 import { GlobalStyles } from './styles/global'
@@ -62,11 +62,6 @@ const createPdf = (students, summary) => {
     doc.text(student.status, leftMargin + 380, y)
   })
 
-  const summaryStart = 760
-  if (summaryStart > 760) {
-    doc.addPage()
-  }
-
   const summaryY = students.length * lineHeight + headerY + 70
   doc.setPage(doc.getNumberOfPages())
   doc.setFont('helvetica', 'bold')
@@ -78,6 +73,97 @@ const createPdf = (students, summary) => {
 
   return doc
 }
+
+const PageLayout = styled.main`
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 20px 18px 32px;
+  display: grid;
+  gap: 28px;
+`
+
+const Overview = styled.section`
+  display: grid;
+  gap: 18px;
+`
+
+const OverviewHeader = styled.div`
+  display: grid;
+  gap: 18px;
+  justify-content: space-between;
+  align-items: start;
+
+  @media (min-width: 720px) {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+`
+
+const DateLabel = styled.p`
+  margin: 0;
+  color: #c6b876;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+`
+
+const CurrentDate = styled.h2`
+  margin: 10px 0 0;
+  font-size: clamp(1.85rem, 2.8vw, 2.85rem);
+  line-height: 1.03;
+`
+
+const ExportButton = styled.button`
+  border: none;
+  border-radius: 18px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #d5b45a, #ab8a33);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.24);
+  color: #071004;
+  font-weight: 700;
+  min-width: 170px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 24px 44px rgba(0, 0, 0, 0.28);
+  }
+`
+
+const SummaryGrid = styled.div`
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+`
+
+const SearchWrapper = styled.div`
+  position: sticky;
+  top: 16px;
+  z-index: 5;
+  width: 100%;
+  align-self: start;
+`
+
+const FeedbackMessage = styled.div`
+  padding: 28px 24px;
+  border-radius: 26px;
+  background: ${(props) => (props.error ? 'rgba(183, 63, 44, 0.2)' : 'rgba(18, 26, 12, 0.94)')};
+  color: ${(props) => (props.error ? '#ffe3e1' : '#f7f3df')};
+  text-align: center;
+`
+
+const FooterNote = styled.div`
+  display: grid;
+  gap: 12px;
+  color: rgba(247, 243, 223, 0.72);
+  font-size: 0.95rem;
+
+  @media (min-width: 720px) {
+    grid-auto-flow: column;
+    justify-content: space-between;
+    align-items: center;
+  }
+`
 
 function App() {
   const [students, setStudents] = useState([])
@@ -112,7 +198,7 @@ function App() {
         .from('students')
         .select('*')
         .order('numero', { ascending: true })
-      
+
       if (error) throw new Error(error.message)
       setStudents(data || [])
       setLastUpdate(new Date().toISOString())
@@ -132,7 +218,7 @@ function App() {
         .from('students')
         .update({ status })
         .eq('id', id)
-      
+
       if (error) throw new Error(error.message)
       await fetchStudents()
     } catch (err) {
@@ -154,35 +240,17 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <GlobalStyles />
-      <main style={{ padding: '24px 22px 32px', maxWidth: 1200, margin: '0 auto' }}>
+      <PageLayout>
         <Banner />
-        <section style={{ display: 'grid', gap: 20, marginBottom: 24 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'space-between', alignItems: 'center' }}>
+        <Overview>
+          <OverviewHeader>
             <div>
-              <p style={{ margin: 0, color: '#c6b876', textTransform: 'uppercase', fontSize: '0.82rem', letterSpacing: '0.16em' }}>
-                Data atual
-              </p>
-              <h2 style={{ margin: '10px 0 0', fontSize: 'clamp(1.85rem, 2.8vw, 2.85rem)', lineHeight: 1.03 }}>
-                {formatDate(new Date())}
-              </h2>
+              <DateLabel>Data atual</DateLabel>
+              <CurrentDate>{formatDate(new Date())}</CurrentDate>
             </div>
-            <button
-              onClick={exportPdf}
-              style={{
-                border: 'none',
-                borderRadius: 18,
-                padding: '16px 26px',
-                background: 'linear-gradient(135deg, #d5b45a, #ab8a33)',
-                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.24)',
-                color: '#071004',
-                fontWeight: 700,
-                minWidth: 180
-              }}
-            >
-              GERAR PDF
-            </button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(110px, 1fr))', gap: 16 }}>
+            <ExportButton onClick={exportPdf}>GERAR PDF</ExportButton>
+          </OverviewHeader>
+          <SummaryGrid>
             <SummaryCard label="Total alunos" value={summary.total} />
             <SummaryCard label="CFC" value={summary.CFC} />
             <SummaryCard label="ESV" value={summary.ESV} />
@@ -190,28 +258,28 @@ function App() {
             <SummaryCard label="SDE" value={summary.SDE} />
             <SummaryCard label="DSP" value={summary.DSP} />
             <SummaryCard label="FLT" value={summary.FLT} />
-          </div>
-        </section>
+          </SummaryGrid>
+        </Overview>
 
-        <SearchBar value={search} onChange={setSearch} />
+        <SearchWrapper>
+          <SearchBar value={search} onChange={setSearch} />
+        </SearchWrapper>
 
         {loading ? (
-          <div style={{ padding: 32, borderRadius: 28, background: 'rgba(18, 26, 12, 0.94)', textAlign: 'center' }}>
+          <FeedbackMessage>
             Carregando dados da turma...
-          </div>
+          </FeedbackMessage>
         ) : error ? (
-          <div style={{ padding: 30, borderRadius: 24, background: 'rgba(183, 63, 44, 0.2)', color: '#ffe3e1' }}>
-            {error}
-          </div>
+          <FeedbackMessage error>{error}</FeedbackMessage>
         ) : (
           <StudentTable students={filteredStudents} onStatusChange={handleStatusChange} />
         )}
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12, marginTop: 20, color: '#c0b985' }}>
+        <FooterNote>
           <span>Atualização automática a cada 5 segundos</span>
           <span>Última atualização: {lastUpdate ? new Date(lastUpdate).toLocaleTimeString('pt-BR') : '--:--'}</span>
-        </div>
-      </main>
+        </FooterNote>
+      </PageLayout>
     </ThemeProvider>
   )
 }
