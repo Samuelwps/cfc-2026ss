@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS students (
   id SERIAL PRIMARY KEY,
-  number INTEGER UNIQUE NOT NULL,
-  name TEXT NOT NULL,
+  numero INTEGER UNIQUE NOT NULL,
+  nome TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'CFC'
 );
 
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS "CFC" (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
 
-INSERT INTO students (number, name, status) VALUES
+INSERT INTO students (numero, nome, status) VALUES
   (1, 'WALLACE', 'CFC'),
   (2, 'GUEDES', 'CFC'),
   (3, 'OLIVEIRA', 'CFC'),

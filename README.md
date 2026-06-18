@@ -34,7 +34,7 @@ O projeto está configurado para deploy na Vercel com `vercel.json`:
 
 A API `api/students.js` cria automaticamente as tabelas no Vercel Postgres:
 
-- `students` — `id`, `number`, `name`, `status`
+- `students` — `id`, `numero`, `nome`, `status`
 - `resets` — `id`, `reset_date`, `created_at`
 
 A zeragem diária atualiza todos os estudantes para `CFC` apenas uma vez por dia.

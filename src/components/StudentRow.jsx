@@ -46,8 +46,8 @@ export default function StudentRow({ student, onStatusChange }) {
 
   return (
     <Row>
-      <Cell>{String(student.number).padStart(2, '0')}</Cell>
-      <Cell>{student.name}</Cell>
+      <Cell>{String(student.numero).padStart(2, '0')}</Cell>
+      <Cell>{student.nome}</Cell>
       <Cell>
         <Chip color={status.color}>{student.status}</Chip>
       </Cell>

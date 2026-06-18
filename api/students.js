@@ -1,54 +1,54 @@
 const { sql } = require('@vercel/postgres')
 
 const studentList = [
-  { number: 1, name: 'WALLACE' },
-  { number: 2, name: 'GUEDES' },
-  { number: 3, name: 'OLIVEIRA' },
-  { number: 4, name: 'GALVÃO' },
-  { number: 5, name: 'FONSECA' },
-  { number: 6, name: 'CARVALHO' },
-  { number: 7, name: 'CAMARGO' },
-  { number: 8, name: 'RIBEIRO' },
-  { number: 9, name: 'TALLIS' },
-  { number: 10, name: 'LA RUBIA' },
-  { number: 11, name: 'NASCIMENTO' },
-  { number: 12, name: 'LUCAS MACEDO' },
-  { number: 13, name: 'RICK' },
-  { number: 14, name: 'EDUARDO F' },
-  { number: 15, name: 'BRAVIM' },
-  { number: 16, name: 'ADIEL' },
-  { number: 17, name: 'FLORES' },
-  { number: 18, name: 'JORGE' },
-  { number: 19, name: 'GUIMARÃES' },
-  { number: 20, name: 'JAMOCELLI' },
-  { number: 21, name: 'ISRAEL' },
-  { number: 22, name: 'OLIVEIRA' },
-  { number: 23, name: 'MAIA' },
-  { number: 24, name: 'MOURA' },
-  { number: 25, name: 'KEYNER' },
-  { number: 26, name: 'MARCON' },
-  { number: 27, name: 'FRIESEN' },
-  { number: 28, name: 'SILVESTRE' },
-  { number: 29, name: 'SABINO' },
-  { number: 30, name: 'DOLINSKI' },
-  { number: 31, name: 'J. CASTRO' },
-  { number: 32, name: 'FLAUZINO' },
-  { number: 33, name: 'BRITO' },
-  { number: 34, name: 'PICUSSA' },
-  { number: 35, name: 'MIKTIV' },
-  { number: 36, name: 'ALLAN' },
-  { number: 37, name: 'ALVES' },
-  { number: 38, name: 'RIBEIRO' },
-  { number: 39, name: 'FRUTUOSO' },
-  { number: 40, name: 'FAGUNDES' }
+  { numero: 1, nome: 'WALLACE' },
+  { numero: 2, nome: 'GUEDES' },
+  { numero: 3, nome: 'OLIVEIRA' },
+  { numero: 4, nome: 'GALVÃO' },
+  { numero: 5, nome: 'FONSECA' },
+  { numero: 6, nome: 'CARVALHO' },
+  { numero: 7, nome: 'CAMARGO' },
+  { numero: 8, nome: 'RIBEIRO' },
+  { numero: 9, nome: 'TALLIS' },
+  { numero: 10, nome: 'LA RUBIA' },
+  { numero: 11, nome: 'NASCIMENTO' },
+  { numero: 12, nome: 'LUCAS MACEDO' },
+  { numero: 13, nome: 'RICK' },
+  { numero: 14, nome: 'EDUARDO F' },
+  { numero: 15, nome: 'BRAVIM' },
+  { numero: 16, nome: 'ADIEL' },
+  { numero: 17, nome: 'FLORES' },
+  { numero: 18, nome: 'JORGE' },
+  { numero: 19, nome: 'GUIMARÃES' },
+  { numero: 20, nome: 'JAMOCELLI' },
+  { numero: 21, nome: 'ISRAEL' },
+  { numero: 22, nome: 'OLIVEIRA' },
+  { numero: 23, nome: 'MAIA' },
+  { numero: 24, nome: 'MOURA' },
+  { numero: 25, nome: 'KEYNER' },
+  { numero: 26, nome: 'MARCON' },
+  { numero: 27, nome: 'FRIESEN' },
+  { numero: 28, nome: 'SILVESTRE' },
+  { numero: 29, nome: 'SABINO' },
+  { numero: 30, nome: 'DOLINSKI' },
+  { numero: 31, nome: 'J. CASTRO' },
+  { numero: 32, nome: 'FLAUZINO' },
+  { numero: 33, nome: 'BRITO' },
+  { numero: 34, nome: 'PICUSSA' },
+  { numero: 35, nome: 'MIKTIV' },
+  { numero: 36, nome: 'ALLAN' },
+  { numero: 37, nome: 'ALVES' },
+  { numero: 38, nome: 'RIBEIRO' },
+  { numero: 39, nome: 'FRUTUOSO' },
+  { numero: 40, nome: 'FAGUNDES' }
 ]
 
 async function ensureSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS students (
       id SERIAL PRIMARY KEY,
-      number INTEGER UNIQUE NOT NULL,
-      name TEXT NOT NULL,
+      numero INTEGER UNIQUE NOT NULL,
+      nome TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'CFC'
     );
   `
@@ -74,9 +74,9 @@ async function ensureSchema() {
   if (currentCount === 0) {
     for (const student of studentList) {
       await sql`
-        INSERT INTO students (number, name, status)
-        VALUES (${student.number}, ${student.name}, 'CFC')
-        ON CONFLICT (number) DO NOTHING;
+        INSERT INTO students (numero, nome, status)
+        VALUES (${student.numero}, ${student.nome}, 'CFC')
+        ON CONFLICT (numero) DO NOTHING;
       `
     }
   }
@@ -123,7 +123,7 @@ async function handler(request, response) {
     await applyDailyReset()
 
     if (method === 'GET') {
-      const students = await sql`SELECT id, number, name, status FROM students ORDER BY number ASC;`
+      const students = await sql`SELECT id, numero, nome, status FROM students ORDER BY numero ASC;`
       response.statusCode = 200
       response.setHeader('Content-Type', 'application/json')
       response.end(JSON.stringify({ students: students.rows }))
@@ -145,7 +145,7 @@ async function handler(request, response) {
         UPDATE students SET status = ${status} WHERE id = ${id};
       `
 
-      const students = await sql`SELECT id, number, name, status FROM students ORDER BY number ASC;`
+      const students = await sql`SELECT id, numero, nome, status FROM students ORDER BY numero ASC;`
       response.statusCode = 200
       response.setHeader('Content-Type', 'application/json')
       response.end(JSON.stringify({ students: students.rows }))

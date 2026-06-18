@@ -57,8 +57,8 @@ const createPdf = (students, summary) => {
       doc.addPage()
       currentY = 40
     }
-    doc.text(String(student.number).padStart(2, '0'), leftMargin, y)
-    doc.text(student.name, leftMargin + 70, y)
+    doc.text(String(student.numero).padStart(2, '0'), leftMargin, y)
+    doc.text(student.nome, leftMargin + 70, y)
     doc.text(student.status, leftMargin + 380, y)
   })
 
@@ -101,8 +101,8 @@ function App() {
     const query = search.trim().toLowerCase()
     if (!query) return students
     return students.filter((student) => {
-      const number = String(student.number).padStart(2, '0')
-      return number.includes(query) || student.name.toLowerCase().includes(query)
+      const number = String(student.numero).padStart(2, '0')
+      return number.includes(query) || student.nome.toLowerCase().includes(query)
     })
   }, [search, students])
 
@@ -111,7 +111,7 @@ function App() {
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .order('number', { ascending: true })
+        .order('numero', { ascending: true })
       
       if (error) throw new Error(error.message)
       setStudents(data || [])
