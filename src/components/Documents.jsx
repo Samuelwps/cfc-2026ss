@@ -603,7 +603,7 @@ export default function Documents() {
     <DocumentsContainer>
       <PageHeader>
         <PageTitle>DOCUMENTOS</PageTitle>
-        <PageSubtitle>Central de documentos militares, ordens do dia, escalas e comunicados. Organize, busque e visualize todos os materiais da turma.</PageSubtitle>
+        <PageSubtitle>Central de documentos militares, ordens do dia, escalas e comunicados. Organize, busque e visualize todos os materiais do turno.</PageSubtitle>
       </PageHeader>
 
       <ControlsSection>

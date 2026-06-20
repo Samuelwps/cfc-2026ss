@@ -92,7 +92,7 @@ export default function Banner() {
       <Badge>CFC 2026 • Tiragem de Faltas</Badge>
       <TitleGroup>
         <Heading>TIRAGEM DE FALTAS</Heading>
-        <Subtitle>Controle rápido e visível para conferência da turma de Formação de Cabos. Todas as alterações são persistidas no banco e atualizadas automaticamente.</Subtitle>
+        <Subtitle>Controle rápido e visível para conferência do turno do curso de Formação de Cabos. Todas as alterações são persistidas no banco e atualizadas automaticamente.</Subtitle>
       </TitleGroup>
     </BannerWrapper>
   )
