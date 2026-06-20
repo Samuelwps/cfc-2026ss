@@ -94,7 +94,6 @@ export default function Banner() {
         <Heading>TIRAGEM DE FALTAS</Heading>
         <Subtitle>Controle rápido e visível para conferência da turma de Formação de Cabos. Todas as alterações são persistidas no banco e atualizadas automaticamente.</Subtitle>
       </TitleGroup>
-      <BannerImage src={bannerImage} alt="Banner da turma CFC 2026" />
     </BannerWrapper>
   )
 }
