@@ -10,10 +10,12 @@ const TableWrapper = styled.div`
 
 const DesktopTable = styled.div`
   overflow-x: auto;
-  border-radius: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(18, 26, 12, 0.88);
-  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.24);
+  border-radius: 0;
+  border: 1px solid #2E3B2F;
+  border-top: 2px solid #FF6A00;
+  border-left: 3px solid #FF6A00;
+  background: rgba(11, 15, 20, 0.95);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 106, 0, 0.1);
   padding: 0;
 
   @media (max-width: 870px) {
@@ -28,7 +30,8 @@ const Table = styled.table`
 `
 
 const Head = styled.thead`
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(46, 59, 45, 0.3);
+  border-bottom: 2px solid #2E3B2F;
 `
 
 const HeadRow = styled.tr``
@@ -36,11 +39,22 @@ const HeadRow = styled.tr``
 const HeadCell = styled.th`
   text-align: left;
   padding: 18px 16px;
-  color: rgba(247, 243, 223, 0.8);
+  color: #FF6A00;
   font-size: 0.92rem;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   line-height: 1.2;
+  font-weight: 700;
+  border-right: 1px solid #2E3B2F;
+
+  &:last-child {
+    border-right: none;
+  }
+
+  &::before {
+    content: '» ';
+    opacity: 0.6;
+  }
 `
 
 const Body = styled.tbody``
@@ -58,10 +72,18 @@ const Card = styled.article`
   display: grid;
   gap: 16px;
   padding: 20px;
-  border-radius: 26px;
-  background: rgba(18, 26, 12, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.18);
+  border-radius: 0;
+  background: rgba(11, 15, 20, 0.95);
+  border: 1px solid #2E3B2F;
+  border-left: 3px solid #FF6A00;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 106, 0, 0.1);
+  transition: all 0.2s linear;
+
+  &:hover {
+    border-color: #FF6A00;
+    box-shadow: 0 20px 50px rgba(255, 106, 0, 0.2), inset 0 1px 0 rgba(255, 106, 0, 0.15);
+    transform: translateY(-2px);
+  }
 `
 
 const CardHeader = styled.div`
@@ -70,6 +92,8 @@ const CardHeader = styled.div`
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  border-bottom: 1px solid #2E3B2F;
+  padding-bottom: 12px;
 `
 
 const CardTitle = styled.div`
@@ -78,17 +102,19 @@ const CardTitle = styled.div`
 `
 
 const CardLabel = styled.span`
-  color: rgba(247, 243, 223, 0.68);
+  color: #7a8088;
   font-size: 0.82rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
+  font-weight: 600;
 `
 
 const CardValue = styled.p`
   margin: 0;
   font-size: 1.2rem;
   font-weight: 700;
-  color: #f7f3df;
+  color: #FF6A00;
+  text-shadow: 0 0 10px rgba(255, 106, 0, 0.3);
 `
 
 const CardFields = styled.div`
@@ -105,7 +131,7 @@ const CardRow = styled.div`
 `
 
 const CardField = styled.span`
-  color: rgba(247, 243, 223, 0.86);
+  color: #E8EAED;
   font-size: 0.97rem;
   min-width: 110px;
 `
@@ -115,21 +141,25 @@ const CardChip = styled.span`
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 0.92rem;
   font-weight: 600;
-  color: #f7f3df;
-  background: ${({ color }) => `${color}22`};
-  border: 1px solid ${({ color }) => `${color}44`};
+  color: #E8EAED;
+  background: ${({ color }) => `${color}20`};
+  border: 1px solid ${({ color }) => color};
+  box-shadow: 0 0 8px ${({ color }) => `${color}40`};
+  text-transform: uppercase;
 `
 
 const EmptyState = styled.div`
   padding: 28px 24px;
-  border-radius: 24px;
-  background: rgba(23, 32, 16, 0.96);
-  border: 1px dashed rgba(255, 255, 255, 0.12);
-  color: rgba(247, 243, 223, 0.78);
+  border-radius: 0;
+  background: rgba(11, 15, 20, 0.95);
+  border: 1px dashed #2E3B2F;
+  border-left: 3px dashed #FF6A00;
+  color: #7a8088;
   text-align: center;
+  letter-spacing: 0.3px;
 `
 
 export default function StudentTable({ students, onStatusChange }) {

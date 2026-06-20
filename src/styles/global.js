@@ -3,11 +3,13 @@ import { createGlobalStyle } from 'styled-components'
 export const GlobalStyles = createGlobalStyle`
   :root {
     color-scheme: dark;
-    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Courier New', 'Courier', monospace;
     font-size: 16px;
     line-height: 1.5;
-    background: #071004;
-    color: #f7f3df;
+    background: #0B0F14;
+    color: #E8EAED;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 
   * {
@@ -21,15 +23,18 @@ export const GlobalStyles = createGlobalStyle`
   body {
     margin: 0;
     min-height: 100vh;
-    background: radial-gradient(circle at top, rgba(230, 204, 110, 0.16) 0%, transparent 40%),
-      linear-gradient(180deg, #0b1208 0%, #060906 100%);
-    color: #f7f3df;
+    background: linear-gradient(135deg, #0B0F14 0%, #1a1f27 50%, #0B0F14 100%);
+    background-attachment: fixed;
+    color: #E8EAED;
+    letter-spacing: 0.3px;
   }
 
   button,
   input,
-  select {
+  select,
+  textarea {
     font: inherit;
+    letter-spacing: inherit;
   }
 
   button {
@@ -42,15 +47,52 @@ export const GlobalStyles = createGlobalStyle`
   }
 
   input,
-  select {
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(13, 17, 10, 0.88);
-    color: #f7f3df;
-    border-radius: 12px;
+  select,
+  textarea {
+    border: 1px solid #2E3B2F;
+    background: rgba(11, 15, 20, 0.9);
+    color: #E8EAED;
+    border-radius: 0;
+    padding: 10px 12px;
+    transition: all 0.2s linear;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+
+    &:focus {
+      outline: none;
+      border-color: #FF6A00;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 10px rgba(255, 106, 0, 0.3);
+    }
+
+    &::placeholder {
+      color: #7a8088;
+    }
+  }
+
+  textarea {
+    resize: vertical;
+    font-family: 'Courier New', 'Courier', monospace;
   }
 
   ::selection {
-    background: rgba(196, 161, 63, 0.35);
-    color: #f8f5dc;
+    background: rgba(255, 106, 0, 0.4);
+    color: #E8EAED;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(11, 15, 20, 0.8);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2E3B2F;
+    border-radius: 0;
+
+    &:hover {
+      background: #FF6A00;
+    }
   }
 `

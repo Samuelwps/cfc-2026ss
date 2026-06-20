@@ -3,24 +3,32 @@ import StatusSelect from './StatusSelect'
 import { statusConfig } from '../styles/theme'
 
 const Row = styled.tr`
-  transition: background 0.25s ease;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s linear;
+  background: rgba(46, 59, 45, 0.1);
+  border-bottom: 1px solid #2E3B2F;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(46, 59, 45, 0.2);
+    box-shadow: inset 3px 0 0 #FF6A00;
   }
 `
 
 const Cell = styled.td`
   padding: 16px 14px;
   vertical-align: middle;
-  color: #f7f3df;
+  color: #E8EAED;
   font-size: 0.98rem;
+  border-right: 1px solid #2E3B2F;
+
+  &:last-child {
+    border-right: none;
+  }
 
   &:first-child {
     font-weight: 700;
     width: 84px;
+    color: #FF6A00;
+    text-shadow: 0 0 8px rgba(255, 106, 0, 0.2);
   }
 
   &:nth-child(2) {
@@ -33,12 +41,15 @@ const Chip = styled.span`
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: 0;
   font-size: 0.92rem;
   font-weight: 600;
-  color: #f7f3df;
-  background: ${({ color }) => `${color}22`};
-  border: 1px solid ${({ color }) => `${color}44`};
+  color: #E8EAED;
+  background: ${({ color }) => `${color}20`};
+  border: 1px solid ${({ color }) => color};
+  box-shadow: 0 0 8px ${({ color }) => `${color}40`};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `
 
 export default function StudentRow({ student, onStatusChange }) {
