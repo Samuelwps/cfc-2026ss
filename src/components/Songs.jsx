@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import styled from 'styled-components'
+import { supabase } from '../lib/supabase'
 
 const SongsContainer = styled.main`
   width: min(1200px, 100%);
@@ -447,14 +448,28 @@ export default function Songs() {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({ title: '', category: categories[0], lyrics: '' })
+  const [isLoadingData, setIsLoadingData] = useState(true)
 
   const fetchSongs = async () => {
     try {
-      const response = await fetch('/api/songs')
-      const data = await response.json()
-      setSongs(data.songs || [])
+      setIsLoadingData(true)
+      const { data, error } = await supabase
+        .from('songs')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Supabase error:', error)
+        alert('Erro ao buscar canções: ' + error.message)
+        return
+      }
+
+      setSongs(data || [])
     } catch (error) {
       console.error('Erro ao buscar canções:', error)
+      alert('Erro ao buscar canções: ' + error.message)
+    } finally {
+      setIsLoadingData(false)
     }
   }
 
@@ -471,20 +486,27 @@ export default function Songs() {
     }
 
     try {
-      const response = await fetch('/api/songs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
+      const { error } = await supabase
+        .from('songs')
+        .insert([
+          {
+            title: formData.title,
+            category: formData.category,
+            lyrics: formData.lyrics,
+            artist: 'CFC 2026'
+          }
+        ])
 
-      if (response.ok) {
-        await fetchSongs()
-        setFormData({ title: '', category: categories[0], lyrics: '' })
-        setShowModal(false)
-        alert('Canção adicionada com sucesso!')
-      } else {
-        alert('Erro ao adicionar canção')
+      if (error) {
+        console.error('Supabase error:', error)
+        alert('Erro ao adicionar canção: ' + error.message)
+        return
       }
+
+      await fetchSongs()
+      setFormData({ title: '', category: categories[0], lyrics: '' })
+      setShowModal(false)
+      alert('Canção adicionada com sucesso!')
     } catch (error) {
       alert('Erro ao adicionar canção: ' + error.message)
     }
@@ -494,16 +516,19 @@ export default function Songs() {
     if (!confirm('Tem certeza que deseja deletar esta canção?')) return
 
     try {
-      const response = await fetch(`/api/songs?id=${id}`, {
-        method: 'DELETE'
-      })
+      const { error } = await supabase
+        .from('songs')
+        .delete()
+        .eq('id', id)
 
-      if (response.ok) {
-        await fetchSongs()
-        alert('Canção deletada com sucesso!')
-      } else {
-        alert('Erro ao deletar canção')
+      if (error) {
+        console.error('Supabase error:', error)
+        alert('Erro ao deletar canção: ' + error.message)
+        return
       }
+
+      await fetchSongs()
+      alert('Canção deletada com sucesso!')
     } catch (error) {
       alert('Erro ao deletar canção: ' + error.message)
     }
@@ -554,7 +579,11 @@ export default function Songs() {
         </AddButton>
       </ControlsSection>
 
-      {filteredSongs.length > 0 ? (
+      {isLoadingData ? (
+        <EmptyState>
+          <p>Carregando canções...</p>
+        </EmptyState>
+      ) : filteredSongs.length > 0 ? (
         <SongsGrid>
           {filteredSongs.map((song) => (
             <SongCard key={song.id}>
@@ -565,7 +594,7 @@ export default function Songs() {
                     <strong>Categoria:</strong> {song.category}
                   </MetaItem>
                   <MetaItem>
-                    <strong>Data:</strong> {new Date(song.date).toLocaleDateString('pt-BR')}
+                    <strong>Data:</strong> {new Date(song.created_at).toLocaleDateString('pt-BR')}
                   </MetaItem>
                 </SongMeta>
               </div>

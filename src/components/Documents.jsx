@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import styled from 'styled-components'
+import { supabase } from '../lib/supabase'
 
 const DocumentsContainer = styled.main`
   width: min(1200px, 100%);
@@ -284,14 +285,28 @@ export default function Documents() {
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [isLoadingData, setIsLoadingData] = useState(true)
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch('/api/documents')
-      const data = await response.json()
-      setDocuments(data.documents || [])
+      setIsLoadingData(true)
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Supabase error:', error)
+        alert('Erro ao buscar documentos: ' + error.message)
+        return
+      }
+
+      setDocuments(data || [])
     } catch (error) {
       console.error('Erro ao buscar documentos:', error)
+      alert('Erro ao buscar documentos: ' + error.message)
+    } finally {
+      setIsLoadingData(false)
     }
   }
 
@@ -309,9 +324,9 @@ export default function Documents() {
       return
     }
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('O arquivo é muito grande. Máximo: 5MB')
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('O arquivo é muito grande. Máximo: 10MB')
       return
     }
 
@@ -324,29 +339,63 @@ export default function Documents() {
     setLoading(true)
 
     try {
-      // Read file as base64
       const reader = new FileReader()
       reader.onload = async (event) => {
-        const base64Data = event.target.result.split(',')[1]
+        try {
+          const base64Data = event.target.result.split(',')[1]
+          const fileName = `${Date.now()}-${file.name}`
 
-        const response = await fetch('/api/documents', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: file.name,
-            category,
-            base64Data
-          })
-        })
+          // Upload file to Supabase storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('documents')
+            .upload(fileName, base64Data, {
+              contentType: 'application/pdf'
+            })
 
-        if (response.ok) {
+          if (uploadError) {
+            console.error('Upload error:', uploadError)
+            alert('Erro ao fazer upload: ' + uploadError.message)
+            setLoading(false)
+            e.target.value = ''
+            return
+          }
+
+          // Get public URL
+          const { data: publicUrlData } = supabase.storage
+            .from('documents')
+            .getPublicUrl(fileName)
+
+          const file_url = publicUrlData?.publicUrl
+
+          // Insert document record in database
+          const { error: dbError } = await supabase
+            .from('documents')
+            .insert([
+              {
+                title: file.name,
+                description: `PDF document - ${category}`,
+                file_url: file_url,
+                category: category
+              }
+            ])
+
+          if (dbError) {
+            console.error('Database error:', dbError)
+            alert('Erro ao salvar documento: ' + dbError.message)
+            setLoading(false)
+            e.target.value = ''
+            return
+          }
+
           await fetchDocuments()
           alert('Documento enviado com sucesso!')
-        } else {
-          alert('Erro ao enviar documento')
+          e.target.value = ''
+        } catch (error) {
+          console.error('Error:', error)
+          alert('Erro ao enviar documento: ' + error.message)
+        } finally {
+          setLoading(false)
         }
-        setLoading(false)
-        e.target.value = ''
       }
       reader.readAsDataURL(file)
     } catch (error) {
@@ -360,30 +409,37 @@ export default function Documents() {
     if (!confirm('Tem certeza que deseja deletar este documento?')) return
 
     try {
-      const response = await fetch(`/api/documents?id=${id}`, {
-        method: 'DELETE'
-      })
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', id)
 
-      if (response.ok) {
-        await fetchDocuments()
-        alert('Documento deletado com sucesso!')
-      } else {
-        alert('Erro ao deletar documento')
+      if (error) {
+        console.error('Supabase error:', error)
+        alert('Erro ao deletar documento: ' + error.message)
+        return
       }
+
+      await fetchDocuments()
+      alert('Documento deletado com sucesso!')
     } catch (error) {
       alert('Erro ao deletar documento: ' + error.message)
     }
   }
 
-  const handleDownload = (id, name) => {
+  const handleDownload = (file_url, fileName) => {
+    if (!file_url) {
+      alert('URL do arquivo não disponível')
+      return
+    }
     const link = document.createElement('a')
-    link.href = `/api/documents?download&id=${id}`
-    link.download = name
+    link.href = file_url
+    link.download = fileName
     link.click()
   }
 
   const filteredDocuments = documents.filter((doc) => {
-    const matchSearch = doc.name.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = doc.title.toLowerCase().includes(search.toLowerCase())
     const matchCategory = !selectedCategory || doc.category === selectedCategory
     return matchSearch && matchCategory
   })
@@ -434,30 +490,36 @@ export default function Documents() {
         />
       </ControlsSection>
 
-      {filteredDocuments.length > 0 ? (
+      {isLoadingData ? (
+        <EmptyState>
+          <p>Carregando documentos...</p>
+        </EmptyState>
+      ) : filteredDocuments.length > 0 ? (
         <DocumentsGrid>
           {filteredDocuments.map((doc) => (
             <DocumentCard key={doc.id}>
               <div>
-                <DocumentTitle>{doc.name}</DocumentTitle>
+                <DocumentTitle>{doc.title}</DocumentTitle>
                 <DocumentMeta>
                   <MetaItem>
                     <strong>Categoria:</strong> {doc.category}
                   </MetaItem>
                   <MetaItem>
-                    <strong>Data:</strong> {new Date(doc.date).toLocaleDateString('pt-BR')}
+                    <strong>Data:</strong> {new Date(doc.created_at).toLocaleDateString('pt-BR')}
                   </MetaItem>
                 </DocumentMeta>
               </div>
               <DocumentActions>
                 <ActionButton
                   primary
-                  onClick={() => handleDownload(doc.id, doc.name)}
+                  onClick={() => handleDownload(doc.file_url, doc.title)}
                 >
                   📥 Download
                 </ActionButton>
                 <ActionButton
-                  onClick={() => window.open(`/api/documents?download&id=${doc.id}`, '_blank')}
+                  onClick={() => {
+                    if (doc.file_url) window.open(doc.file_url, '_blank')
+                  }}
                 >
                   👁️ Visualizar
                 </ActionButton>
