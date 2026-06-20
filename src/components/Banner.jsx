@@ -1,5 +1,4 @@
 import styled from 'styled-components'
-import bannerImage from '../assets/hero.png'
 
 const BannerWrapper = styled.section`
   position: relative;

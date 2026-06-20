@@ -310,6 +310,70 @@ const Modal = styled.div`
   }
 `
 
+// Lyrics modal styles
+const LyricsBackdrop = styled(ModalBackdrop)``
+
+const LyricsViewer = styled.div`
+  background: rgba(11, 15, 20, 0.98);
+  border: 2px solid #FF6A00;
+  padding: 18px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 86vh;
+  overflow: hidden;
+  position: relative;
+  border-radius: 6px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.75), 0 0 30px rgba(255,106,0,0.12);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.18s linear, opacity 0.18s linear;
+`
+
+const LyricsHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,106,0,0.06);
+`
+
+const LyricsTitle = styled.h3`
+  margin: 0;
+  color: #FF6A00;
+  font-size: 1.25rem;
+  letter-spacing: 0.04em;
+`
+
+const LyricsClose = styled.button`
+  background: transparent;
+  border: none;
+  color: #E8EAED;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 6px;
+`
+
+const LyricsContent = styled.div`
+  padding: 14px 6px 8px 6px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.8;
+  font-size: 1rem;
+  color: #E8EAED;
+  -webkit-font-smoothing: antialiased;
+  scrollbar-width: thin;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255,106,0,0.18);
+    border-radius: 4px;
+  }
+`
+
 const ModalTitle = styled.h2`
   margin: 0 0 20px;
   color: #FF6A00;
@@ -449,6 +513,23 @@ export default function Songs() {
   const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({ title: '', category: categories[0], lyrics: '' })
   const [isLoadingData, setIsLoadingData] = useState(true)
+
+  // Lyrics modal state & helpers
+  const [showLyrics, setShowLyrics] = useState(false)
+  const [activeLyrics, setActiveLyrics] = useState('')
+  const [activeTitle, setActiveTitle] = useState('')
+
+  const openLyrics = (song) => {
+    setActiveTitle(song?.title || 'Letra')
+    setActiveLyrics(song?.lyrics || '')
+    setShowLyrics(true)
+  }
+
+  const closeLyrics = () => {
+    setShowLyrics(false)
+    setActiveLyrics('')
+    setActiveTitle('')
+  }
 
   const fetchSongs = async () => {
     try {
@@ -639,7 +720,7 @@ export default function Songs() {
               <SongActions>
                 <ActionButton
                   primary
-                  onClick={() => alert(song.lyrics)}
+                  onClick={() => openLyrics(song)}
                 >
                   📄 Letra Completa
                 </ActionButton>
@@ -715,6 +796,19 @@ export default function Songs() {
           </Modal>
         </ModalBackdrop>
       )}
-    </SongsContainer>
-  )
+
+        {showLyrics && (
+       <LyricsBackdrop onClick={closeLyrics}>
+         <LyricsViewer onClick={(e) => e.stopPropagation()}>
+           <LyricsHeader>
+             <LyricsTitle>{activeTitle}</LyricsTitle>
+             <LyricsClose onClick={closeLyrics}>✕</LyricsClose>
+           </LyricsHeader>
+           <LyricsContent>{activeLyrics}</LyricsContent>
+         </LyricsViewer>
+       </LyricsBackdrop>
+        )}
+
+   </SongsContainer>
+ )
 }

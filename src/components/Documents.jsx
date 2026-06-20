@@ -271,6 +271,51 @@ const LoadingSpinner = styled.div`
   }
 `
 
+// PDF viewer styles
+const PdfBackdrop = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 18px;
+`
+
+const PdfModal = styled.div`
+  background: #0B0F14;
+  border: 2px solid #FF6A00;
+  width: 100%;
+  max-width: 1000px;
+  height: 88vh;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.75);
+  display: flex;
+  flex-direction: column;
+`
+
+const PdfClose = styled.button`
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: #E8EAED;
+  font-size: 1.25rem;
+  cursor: pointer;
+  z-index: 1110;
+`
+
+const PdfIframe = styled.iframe`
+  border: none;
+  width: 100%;
+  height: 100%;
+  background: #0B0F14;
+`
+
 const categories = [
   'Ordens do Dia',
   'Escalas',
@@ -286,6 +331,56 @@ export default function Documents() {
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [loading, setLoading] = useState(false)
   const [isLoadingData, setIsLoadingData] = useState(true)
+
+  // PDF viewer state
+  const [showPdf, setShowPdf] = useState(false)
+  const [pdfUrl, setPdfUrl] = useState(null)
+  const [isPdfLoading, setIsPdfLoading] = useState(false)
+
+  const closePdf = () => {
+    setShowPdf(false)
+    if (pdfUrl) {
+      try { URL.revokeObjectURL(pdfUrl) } catch (e) {}
+    }
+    setPdfUrl(null)
+    setIsPdfLoading(false)
+  }
+
+  const handleView = async (doc) => {
+    if (!doc || !doc.file_url) {
+      alert('Arquivo não disponível para visualização')
+      return
+    }
+
+    // If public URL, open in new tab
+    if (doc.file_url.startsWith('http')) {
+      window.open(doc.file_url, '_blank')
+      return
+    }
+
+    // Otherwise treat as storage path and download blob for viewing
+    setIsPdfLoading(true)
+    try {
+      const bucket = 'documents'
+      const path = doc.file_url
+      const { data, error } = await supabase.storage.from(bucket).download(path)
+      if (error) {
+        console.error('Download error:', error)
+        alert('Erro ao carregar PDF: ' + error.message)
+        setIsPdfLoading(false)
+        return
+      }
+
+      const url = URL.createObjectURL(data)
+      setPdfUrl(url)
+      setShowPdf(true)
+    } catch (err) {
+      console.error('View exception:', err)
+      alert('Erro ao carregar PDF: ' + err.message)
+    } finally {
+      setIsPdfLoading(false)
+    }
+  }
 
   const fetchDocuments = async () => {
     try {
@@ -577,9 +672,7 @@ export default function Documents() {
                   📥 Download
                 </ActionButton>
                 <ActionButton
-                  onClick={() => {
-                    if (doc.file_url) window.open(doc.file_url, '_blank')
-                  }}
+                  onClick={() => handleView(doc)}
                 >
                   👁️ Visualizar
                 </ActionButton>
@@ -594,6 +687,21 @@ export default function Documents() {
         <EmptyState>
           <p>Nenhum documento encontrado</p>
         </EmptyState>
+      )}
+
+      {showPdf && (
+        <PdfBackdrop onClick={closePdf}>
+          <PdfModal onClick={(e) => e.stopPropagation()}>
+            <PdfClose onClick={closePdf}>✕</PdfClose>
+            {isPdfLoading ? (
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}>
+                <LoadingSpinner />
+              </div>
+            ) : (
+              <PdfIframe src={pdfUrl} title="Visualizador PDF" />
+            )}
+          </PdfModal>
+        </PdfBackdrop>
       )}
     </DocumentsContainer>
   )
