@@ -513,23 +513,60 @@ export default function Songs() {
   }
 
   const handleDelete = async (id) => {
+    if (!id) return
     if (!confirm('Tem certeza que deseja deletar esta canção?')) return
 
     try {
+      // find song to get audio_url before deletion
+      const song = songs.find((s) => s.id === id)
+      const audioPath = song?.audio_url || null
+
       const { error } = await supabase
         .from('songs')
         .delete()
         .eq('id', id)
 
       if (error) {
-        console.error('Supabase error:', error)
+        console.error('Supabase error (delete record):', error)
         alert('Erro ao deletar canção: ' + error.message)
         return
+      }
+
+      // Delete audio file from storage if present
+      if (audioPath) {
+        let bucket = 'songs'
+        let path = audioPath
+
+        try {
+          if (audioPath.startsWith('http')) {
+            const u = new URL(audioPath)
+            const parts = u.pathname.split('/')
+            const idx = parts.indexOf('public')
+            if (idx >= 0 && parts.length > idx + 2) {
+              bucket = parts[idx + 1]
+              path = parts.slice(idx + 2).join('/')
+            } else {
+              path = parts.slice(-1)[0]
+            }
+          }
+
+          const { error: storageError } = await supabase.storage
+            .from(bucket)
+            .remove([path])
+
+          if (storageError) {
+            console.error('Storage delete error:', storageError)
+            alert('Canção removida do banco, mas falha ao remover arquivo no storage: ' + storageError.message)
+          }
+        } catch (err) {
+          console.error('Error removing audio from storage:', err)
+        }
       }
 
       await fetchSongs()
       alert('Canção deletada com sucesso!')
     } catch (error) {
+      console.error('Erro ao deletar canção:', error)
       alert('Erro ao deletar canção: ' + error.message)
     }
   }

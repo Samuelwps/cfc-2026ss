@@ -339,103 +339,163 @@ export default function Documents() {
     setLoading(true)
 
     try {
-      const reader = new FileReader()
-      reader.onload = async (event) => {
-        try {
-          const base64Data = event.target.result.split(',')[1]
-          const fileName = `${Date.now()}-${file.name}`
+      const fileName = `${Date.now()}-${file.name}`
 
-          // Upload file to Supabase storage
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('documents')
-            .upload(fileName, base64Data, {
-              contentType: 'application/pdf'
-            })
+      // Upload file object directly to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(fileName, file, { contentType: file.type, upsert: false })
 
-          if (uploadError) {
-            console.error('Upload error:', uploadError)
-            alert('Erro ao fazer upload: ' + uploadError.message)
-            setLoading(false)
-            e.target.value = ''
-            return
-          }
-
-          // Get public URL
-          const { data: publicUrlData } = supabase.storage
-            .from('documents')
-            .getPublicUrl(fileName)
-
-          const file_url = publicUrlData?.publicUrl
-
-          // Insert document record in database
-          const { error: dbError } = await supabase
-            .from('documents')
-            .insert([
-              {
-                title: file.name,
-                description: `PDF document - ${category}`,
-                file_url: file_url,
-                category: category
-              }
-            ])
-
-          if (dbError) {
-            console.error('Database error:', dbError)
-            alert('Erro ao salvar documento: ' + dbError.message)
-            setLoading(false)
-            e.target.value = ''
-            return
-          }
-
-          await fetchDocuments()
-          alert('Documento enviado com sucesso!')
-          e.target.value = ''
-        } catch (error) {
-          console.error('Error:', error)
-          alert('Erro ao enviar documento: ' + error.message)
-        } finally {
-          setLoading(false)
-        }
+      if (uploadError) {
+        console.error('Upload error:', uploadError)
+        alert('Erro ao fazer upload: ' + uploadError.message)
+        setLoading(false)
+        e.target.value = ''
+        return
       }
-      reader.readAsDataURL(file)
-    } catch (error) {
-      alert('Erro ao enviar documento: ' + error.message)
-      setLoading(false)
+
+      // Get public URL
+      const { data: publicUrlData, error: publicUrlError } = await supabase.storage
+        .from('documents')
+        .getPublicUrl(fileName)
+
+      if (publicUrlError) {
+        console.error('Public URL error:', publicUrlError)
+      }
+
+      const file_url = publicUrlData?.publicUrl || ''
+
+      // Store the storage path (fileName) in the DB as file_url for portability
+      const { error: dbError } = await supabase
+        .from('documents')
+        .insert([
+          {
+            title: file.name,
+            description: `PDF document - ${category}`,
+            file_url: fileName,
+            category: category
+          }
+        ])
+
+      if (dbError) {
+        console.error('Database error:', dbError)
+        alert('Erro ao salvar documento: ' + dbError.message)
+        setLoading(false)
+        e.target.value = ''
+        return
+      }
+
+      await fetchDocuments()
+      alert('Documento enviado com sucesso!')
       e.target.value = ''
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Erro ao enviar documento: ' + error.message)
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleDelete = async (id) => {
+    if (!id) return
     if (!confirm('Tem certeza que deseja deletar este documento?')) return
 
     try {
+      // Find document to get file_url/path before deleting DB record
+      const doc = documents.find((d) => d.id === id)
+      const filePath = doc?.file_url || null
+
       const { error } = await supabase
         .from('documents')
         .delete()
         .eq('id', id)
 
       if (error) {
-        console.error('Supabase error:', error)
+        console.error('Supabase error (delete record):', error)
         alert('Erro ao deletar documento: ' + error.message)
         return
+      }
+
+      // Delete file from storage if exists
+      if (filePath) {
+        // Determine storage path
+        let bucket = 'documents'
+        let path = filePath
+
+        // If filePath looks like a full URL, try to extract the path
+        try {
+          if (filePath.startsWith('http')) {
+            const u = new URL(filePath)
+            // URL path like /storage/v1/object/public/{bucket}/{path}
+            const parts = u.pathname.split('/')
+            const idx = parts.indexOf('public')
+            if (idx >= 0 && parts.length > idx + 2) {
+              bucket = parts[idx + 1]
+              path = parts.slice(idx + 2).join('/')
+            } else {
+              // fallback: assume last segment is filename
+              path = parts.slice(-1)[0]
+            }
+          }
+
+          const { error: storageError } = await supabase.storage
+            .from(bucket)
+            .remove([path])
+
+          if (storageError) {
+            console.error('Storage delete error:', storageError)
+            // don't block the flow; just notify
+            alert('Documento removido do banco, mas falha ao remover arquivo no storage: ' + storageError.message)
+          }
+        } catch (err) {
+          console.error('Error removing file from storage:', err)
+        }
       }
 
       await fetchDocuments()
       alert('Documento deletado com sucesso!')
     } catch (error) {
+      console.error('Erro ao deletar documento:', error)
       alert('Erro ao deletar documento: ' + error.message)
     }
   }
 
-  const handleDownload = (file_url, fileName) => {
+  const handleDownload = async (file_url, fileName) => {
     if (!file_url) {
       alert('URL do arquivo não disponível')
       return
     }
-    const link = document.createElement('a')
-    link.href = file_url
-    link.download = fileName
-    link.click()
+
+    try {
+      // If stored as a full public URL, open it
+      if (file_url.startsWith('http')) {
+        window.open(file_url, '_blank')
+        return
+      }
+
+      // Otherwise treat file_url as storage path
+      const bucket = 'documents'
+      const path = file_url
+
+      const { data, error } = await supabase.storage.from(bucket).download(path)
+      if (error) {
+        console.error('Download error:', error)
+        alert('Erro ao baixar arquivo: ' + error.message)
+        return
+      }
+
+      const url = URL.createObjectURL(data)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName || path.split('/').pop()
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Download exception:', err)
+      alert('Erro ao baixar arquivo: ' + err.message)
+    }
   }
 
   const filteredDocuments = documents.filter((doc) => {
