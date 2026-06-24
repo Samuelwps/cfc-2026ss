@@ -1,5 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import styled, { keyframes } from 'styled-components'
+import * as pdfjsLib from 'pdfjs-dist'
+
+// Set up worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
 
 const fadeIn = keyframes`
   from {
@@ -13,7 +17,7 @@ const fadeIn = keyframes`
 const PdfBackdrop = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -48,13 +52,21 @@ const PdfHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   background: rgba(11, 15, 20, 0.8);
+  flex-wrap: wrap;
+  gap: 12px;
+
+  @media (max-width: 640px) {
+    gap: 8px;
+    padding: 10px 12px;
+  }
 `
 
 const PdfTitle = styled.h2`
   margin: 0;
   color: #FF6A00;
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 2vw, 1rem);
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -64,6 +76,7 @@ const PdfControls = styled.div`
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 `
 
 const PdfButton = styled.button`
@@ -73,11 +86,11 @@ const PdfButton = styled.button`
   color: #FF6A00;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 1.5vw, 0.9rem);
   transition: all 0.2s;
   white-space: nowrap;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: rgba(255, 106, 0, 0.2);
     border-color: #FF6A00;
   }
@@ -87,9 +100,9 @@ const PdfButton = styled.button`
     cursor: not-allowed;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 640px) {
     padding: 6px 10px;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
 `
 
@@ -107,9 +120,23 @@ const PdfCloseButton = styled.button`
   justify-content: center;
   border-radius: 4px;
   transition: all 0.2s;
+  flex-shrink: 0;
 
   &:hover {
     background: rgba(255, 106, 0, 0.1);
+  }
+`
+
+const PageInfo = styled.div`
+  color: #FF6A00;
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 80px;
+  text-align: center;
+
+  @media (max-width: 640px) {
+    min-width: 60px;
+    font-size: 0.75rem;
   }
 `
 
@@ -120,6 +147,7 @@ const PdfContent = styled.div`
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.5);
+  position: relative;
 
   &::-webkit-scrollbar {
     width: 8px;
@@ -139,11 +167,18 @@ const PdfContent = styled.div`
   }
 `
 
-const PdfIframe = styled.iframe`
-  border: none;
+const CanvasContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
   width: 100%;
-  height: 100%;
-  background: #0B0F14;
+
+  canvas {
+    max-width: 100%;
+    max-height: 100%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
 `
 
 const LoadingSpinner = styled.div`
@@ -162,12 +197,102 @@ const LoadingSpinner = styled.div`
   }
 `
 
+const ZoomControls = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: rgba(255, 106, 0, 0.05);
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 106, 0, 0.2);
+
+  @media (max-width: 640px) {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+`
+
+const ZoomValue = styled.span`
+  color: #FF6A00;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 35px;
+  text-align: center;
+
+  @media (max-width: 640px) {
+    min-width: 30px;
+    font-size: 0.75rem;
+  }
+`
+
 export function PdfViewer({ pdfUrl, fileName, onClose }) {
   const [isLoading, setIsLoading] = useState(true)
+  const [pdf, setPdf] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(0)
+  const [zoom, setZoom] = useState(100)
+  const [pageCanvas, setPageCanvas] = useState(null)
 
+  // Load PDF on mount
   useEffect(() => {
-    setIsLoading(true)
+    const loadPdf = async () => {
+      try {
+        setIsLoading(true)
+        let pdfData
+
+        if (pdfUrl.startsWith('blob:')) {
+          const response = await fetch(pdfUrl)
+          pdfData = await response.arrayBuffer()
+        } else {
+          const controller = new AbortController()
+          const timeout = setTimeout(() => controller.abort(), 30000)
+          const response = await fetch(pdfUrl, { signal: controller.signal })
+          pdfData = await response.arrayBuffer()
+          clearTimeout(timeout)
+        }
+
+        const pdfDoc = await pdfjsLib.getDocument({ data: pdfData }).promise
+        setPdf(pdfDoc)
+        setTotalPages(pdfDoc.numPages)
+        setCurrentPage(1)
+      } catch (err) {
+        console.error('Error loading PDF:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadPdf()
   }, [pdfUrl])
+
+  // Render current page
+  useEffect(() => {
+    if (!pdf) return
+
+    const renderPage = async () => {
+      try {
+        const page = await pdf.getPage(currentPage)
+        const viewport = page.getViewport({ scale: zoom / 100 })
+
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise
+
+        setPageCanvas(canvas.toDataURL())
+      } catch (err) {
+        console.error('Error rendering page:', err)
+      }
+    }
+
+    renderPage()
+  }, [pdf, currentPage, zoom])
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -186,12 +311,62 @@ export function PdfViewer({ pdfUrl, fileName, onClose }) {
     }
   }
 
+  const handlePrevPage = () => {
+    setCurrentPage(prev => Math.max(1, prev - 1))
+  }
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(totalPages, prev + 1))
+  }
+
+  const handleZoom = (delta) => {
+    setZoom(prev => Math.max(50, Math.min(300, prev + delta)))
+  }
+
   return (
     <PdfBackdrop onClick={handleBackdropClick}>
       <PdfModalWrapper onClick={(e) => e.stopPropagation()}>
         <PdfHeader>
           <PdfTitle title={fileName}>{fileName}</PdfTitle>
           <PdfControls>
+            <ZoomControls>
+              <PdfButton
+                onClick={() => handleZoom(-10)}
+                disabled={zoom <= 50}
+                title="Zoom out"
+              >
+                −
+              </PdfButton>
+              <ZoomValue>{zoom}%</ZoomValue>
+              <PdfButton
+                onClick={() => handleZoom(10)}
+                disabled={zoom >= 300}
+                title="Zoom in"
+              >
+                +
+              </PdfButton>
+            </ZoomControls>
+
+            {totalPages > 1 && (
+              <>
+                <PdfButton
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  title="Página anterior"
+                >
+                  ◀
+                </PdfButton>
+                <PageInfo>{currentPage} / {totalPages}</PageInfo>
+                <PdfButton
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  title="Próxima página"
+                >
+                  ▶
+                </PdfButton>
+              </>
+            )}
+
             <PdfButton onClick={handleDownload} disabled={isLoading}>
               ⬇ Download
             </PdfButton>
@@ -202,13 +377,17 @@ export function PdfViewer({ pdfUrl, fileName, onClose }) {
         </PdfHeader>
 
         <PdfContent>
-          {isLoading && <LoadingSpinner />}
-          <PdfIframe
-            src={pdfUrl}
-            title={`PDF: ${fileName}`}
-            onLoad={() => setIsLoading(false)}
-            style={{ display: isLoading ? 'none' : 'block' }}
-          />
+          {isLoading || !pageCanvas ? (
+            <LoadingSpinner />
+          ) : (
+            <CanvasContainer>
+              <img
+                src={pageCanvas}
+                alt={`Page ${currentPage}`}
+                style={{ display: 'block' }}
+              />
+            </CanvasContainer>
+          )}
         </PdfContent>
       </PdfModalWrapper>
     </PdfBackdrop>

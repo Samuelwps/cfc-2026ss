@@ -779,7 +779,6 @@ export default function Documents() {
               onDownload={() => handleDownload(doc)}
               onDelete={() => setDeleteConfirm(doc.id)}
               isLoading={isActionLoading(doc.id, 'delete') || isActionLoading(doc.id, 'download')}
-              isImagePreview={isImage(doc.title)}
             />
           ))}
         </DocumentsGrid>
