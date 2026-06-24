@@ -662,7 +662,7 @@ export default function Documents() {
       if (!id) return
 
       const doc = documents.find(d => d.id === id)
-      const filePath = doc?.file_url
+      const filePath = doc ? doc.file_url : null
       const actionKey = `delete-${id}`
 
       try {
