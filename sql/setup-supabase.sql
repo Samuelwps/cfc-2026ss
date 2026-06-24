@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS documents (
   description TEXT,
   file_url TEXT NOT NULL,
   category TEXT NOT NULL,
+  size BIGINT DEFAULT 0,
+  mime_type TEXT DEFAULT 'application/pdf',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -17,6 +19,7 @@ CREATE TABLE IF NOT EXISTS documents (
 -- Create index on category for faster queries
 CREATE INDEX IF NOT EXISTS documents_category_idx ON documents(category);
 CREATE INDEX IF NOT EXISTS documents_created_at_idx ON documents(created_at DESC);
+CREATE INDEX IF NOT EXISTS documents_size_idx ON documents(size);
 
 -- Enable RLS on documents
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;

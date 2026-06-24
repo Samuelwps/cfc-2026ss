@@ -4,6 +4,8 @@ import { jsPDF } from 'jspdf'
 import { supabase } from './lib/supabase'
 import { GlobalStyles } from './styles/global'
 import { theme } from './styles/theme'
+import { ToastProvider } from './contexts/ToastContext'
+import { ToastContainer } from './components/ToastContainer'
 import Header from './components/Header'
 import Banner from './components/Banner'
 import SearchBar from './components/SearchBar'
@@ -258,54 +260,57 @@ function App() {
   }, [])
 
   return (
-    <ThemeProvider theme={theme}>
-      <GlobalStyles />
-      <Header currentPage={currentPage} onPageChange={setCurrentPage} />
-      {currentPage === 'faltas' && (
-        <PageLayout>
-          <Banner />
-          <Overview>
-            <OverviewHeader>
-              <div>
-                <DateLabel>Data atual</DateLabel>
-                <CurrentDate>{formatDate(new Date())}</CurrentDate>
-              </div>
-              <ExportButton onClick={exportPdf}>GERAR PDF</ExportButton>
-            </OverviewHeader>
-            <SummaryGrid>
-              <SummaryCard label="Total alunos" value={summary.total} />
-              <SummaryCard label="CFC" value={summary.CFC} />
-              <SummaryCard label="ESV" value={summary.ESV} />
-              <SummaryCard label="SSV" value={summary.SSV} />
-              <SummaryCard label="SDE" value={summary.SDE} />
-              <SummaryCard label="DSP" value={summary.DSP} />
-              <SummaryCard label="FLT" value={summary.FLT} />
-            </SummaryGrid>
-          </Overview>
+    <ToastProvider>
+      <ThemeProvider theme={theme}>
+        <GlobalStyles />
+        <ToastContainer />
+        <Header currentPage={currentPage} onPageChange={setCurrentPage} />
+        {currentPage === 'faltas' && (
+          <PageLayout>
+            <Banner />
+            <Overview>
+              <OverviewHeader>
+                <div>
+                  <DateLabel>Data atual</DateLabel>
+                  <CurrentDate>{formatDate(new Date())}</CurrentDate>
+                </div>
+                <ExportButton onClick={exportPdf}>GERAR PDF</ExportButton>
+              </OverviewHeader>
+              <SummaryGrid>
+                <SummaryCard label="Total alunos" value={summary.total} />
+                <SummaryCard label="CFC" value={summary.CFC} />
+                <SummaryCard label="ESV" value={summary.ESV} />
+                <SummaryCard label="SSV" value={summary.SSV} />
+                <SummaryCard label="SDE" value={summary.SDE} />
+                <SummaryCard label="DSP" value={summary.DSP} />
+                <SummaryCard label="FLT" value={summary.FLT} />
+              </SummaryGrid>
+            </Overview>
 
-          <SearchWrapper>
-            <SearchBar value={search} onChange={setSearch} />
-          </SearchWrapper>
+            <SearchWrapper>
+              <SearchBar value={search} onChange={setSearch} />
+            </SearchWrapper>
 
-          {loading ? (
-            <FeedbackMessage>
-              Carregando dados da turma...
-            </FeedbackMessage>
-          ) : error ? (
-            <FeedbackMessage error>{error}</FeedbackMessage>
-          ) : (
-            <StudentTable students={filteredStudents} onStatusChange={handleStatusChange} />
-          )}
+            {loading ? (
+              <FeedbackMessage>
+                Carregando dados da turma...
+              </FeedbackMessage>
+            ) : error ? (
+              <FeedbackMessage error>{error}</FeedbackMessage>
+            ) : (
+              <StudentTable students={filteredStudents} onStatusChange={handleStatusChange} />
+            )}
 
-          <FooterNote>
-            <span>Atualização automática a cada 5 segundos</span>
-            <span>Última atualização: {lastUpdate ? new Date(lastUpdate).toLocaleTimeString('pt-BR') : '--:--'}</span>
-          </FooterNote>
-        </PageLayout>
-      )}
-      {currentPage === 'documentos' && <Documents />}
-      {currentPage === 'cancoes' && <Songs />}
-    </ThemeProvider>
+            <FooterNote>
+              <span>Atualização automática a cada 5 segundos</span>
+              <span>Última atualização: {lastUpdate ? new Date(lastUpdate).toLocaleTimeString('pt-BR') : '--:--'}</span>
+            </FooterNote>
+          </PageLayout>
+        )}
+        {currentPage === 'documentos' && <Documents />}
+        {currentPage === 'cancoes' && <Songs />}
+      </ThemeProvider>
+    </ToastProvider>
   )
 }
 
