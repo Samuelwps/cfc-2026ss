@@ -441,6 +441,7 @@ export default function Documents() {
         const fileName = `${Date.now()}-${sanitizeFileName(file.name)}`
 
         // Upload to Supabase Storage
+        console.log('📤 Uploading file:', fileName)
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('documents')
           .upload(fileName, file, { 
@@ -455,17 +456,32 @@ export default function Documents() {
           return
         }
 
+        console.log('✅ File uploaded, getting public URL...')
+        
+        // Get PUBLIC URL for the file (not signed URL)
+        const { data: publicUrlData } = supabase.storage
+          .from('documents')
+          .getPublicUrl(fileName)
+        
+        const publicUrl = publicUrlData?.publicUrl
+        
+        if (!publicUrl) {
+          throw new Error('Could not generate public URL for file')
+        }
+        
+        console.log('✅ Public URL generated:', publicUrl.substring(0, 50) + '...')
+
         // Get file size
         const fileSize = file.size
 
-        // Insert into database
+        // Insert into database with FULL public URL
         const { error: dbError } = await supabase
           .from('documents')
           .insert([
             {
               title: file.name,
               description: `Documento PDF - ${category}`,
-              file_url: fileName,
+              file_url: publicUrl,
               category,
               size: fileSize,
               mime_type: file.type
@@ -515,13 +531,31 @@ export default function Documents() {
         return
       }
 
+      console.log('👁️ Viewing document:', { fileName, fileType, url: doc.file_url.substring(0, 50) + '...' })
       setViewerState(prev => ({ ...prev, isLoading: true }))
 
       try {
         let url = doc.file_url
 
-        // If it's not a full URL, download from storage
-        if (!url.startsWith('http')) {
+        // If the URL is already a full HTTP(S) URL, use it directly
+        // This is the best case - the PDF is stored on Supabase with public access
+        if (url.startsWith('http')) {
+          console.log('✅ Using public URL directly:', url.substring(0, 50) + '...')
+          
+          // Verify URL is accessible with a HEAD request
+          try {
+            const response = await fetch(url, { method: 'HEAD' })
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`)
+            }
+            console.log('✅ URL is accessible:', response.status)
+          } catch (err) {
+            console.warn('⚠️ URL test failed:', err.message)
+            // Continue anyway - the URL might still work
+          }
+        } else {
+          // Legacy: if it's just a filename, try to download and create blob URL
+          console.log('⚠️ File URL is not HTTP, attempting to download:', url)
           const { data, error } = await supabase.storage
             .from('documents')
             .download(url)
@@ -534,8 +568,10 @@ export default function Documents() {
           }
 
           url = URL.createObjectURL(data)
+          console.log('✅ Created blob URL from downloaded data')
         }
 
+        console.log('📖 Opening viewer with URL:', url.substring(0, 50) + '...')
         setViewerState({
           type: fileType,
           url,
@@ -565,10 +601,16 @@ export default function Documents() {
       try {
         setLoadingActions(prev => new Set([...prev, actionKey]))
 
+        console.log('⬇️ Downloading file:', { fileName, url: doc.file_url.substring(0, 50) + '...' })
+
         let downloadUrl = doc.file_url
 
-        // If it's not a full URL, download from storage
-        if (!downloadUrl.startsWith('http')) {
+        // If it's already a full HTTP(S) URL, use it directly
+        if (downloadUrl.startsWith('http')) {
+          console.log('✅ Using public URL directly for download')
+        } else {
+          // Legacy: if it's just a filename, try to download from storage
+          console.log('⚠️ File URL is not HTTP, attempting to download:', downloadUrl)
           const { data, error } = await supabase.storage
             .from('documents')
             .download(downloadUrl)
@@ -580,9 +622,11 @@ export default function Documents() {
           }
 
           downloadUrl = URL.createObjectURL(data)
+          console.log('✅ Created blob URL from downloaded data')
         }
 
         // Create download link
+        console.log('📥 Creating download link')
         const link = document.createElement('a')
         link.href = downloadUrl
         link.download = fileName
@@ -590,15 +634,17 @@ export default function Documents() {
         link.click()
         link.remove()
 
+        console.log('✅ Download initiated for:', fileName)
+
         // Clean up blob URL if it's temporary
         if (downloadUrl.startsWith('blob:') && !doc.file_url.startsWith('blob:')) {
-          URL.revokeObjectURL(downloadUrl)
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 100)
         }
 
-        success(`${fileName} baixado com sucesso!`)
+        success(`Download iniciado: ${fileName}`)
       } catch (err) {
         console.error('Download error:', err)
-        showError('Erro ao fazer download do arquivo')
+        showError('Erro ao baixar arquivo')
       } finally {
         setLoadingActions(prev => {
           const next = new Set(prev)

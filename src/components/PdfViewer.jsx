@@ -1,9 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import styled, { keyframes } from 'styled-components'
-import * as pdfjsLib from 'pdfjs-dist'
-
-// Set up worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+import { Document, Page } from 'react-pdf'
+import '../lib/pdfWorker'
 
 const fadeIn = keyframes`
   from {
@@ -226,73 +224,48 @@ const ZoomValue = styled.span`
 `
 
 export function PdfViewer({ pdfUrl, fileName, onClose }) {
-  const [isLoading, setIsLoading] = useState(true)
-  const [pdf, setPdf] = useState(null)
+  const [numPages, setNumPages] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-  const [zoom, setZoom] = useState(100)
-  const [pageCanvas, setPageCanvas] = useState(null)
+  const [zoom, setZoom] = useState(1)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [pageWidth, setPageWidth] = useState(null)
+  const contentRef = useRef(null)
 
-  // Load PDF on mount
   useEffect(() => {
-    const loadPdf = async () => {
-      try {
-        setIsLoading(true)
-        let pdfData
-
-        if (pdfUrl.startsWith('blob:')) {
-          const response = await fetch(pdfUrl)
-          pdfData = await response.arrayBuffer()
-        } else {
-          const controller = new AbortController()
-          const timeout = setTimeout(() => controller.abort(), 30000)
-          const response = await fetch(pdfUrl, { signal: controller.signal })
-          pdfData = await response.arrayBuffer()
-          clearTimeout(timeout)
-        }
-
-        const pdfDoc = await pdfjsLib.getDocument({ data: pdfData }).promise
-        setPdf(pdfDoc)
-        setTotalPages(pdfDoc.numPages)
-        setCurrentPage(1)
-      } catch (err) {
-        console.error('Error loading PDF:', err)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadPdf()
+    setError(null)
+    setIsLoading(true)
+    setCurrentPage(1)
+    setNumPages(0)
   }, [pdfUrl])
 
-  // Render current page
   useEffect(() => {
-    if (!pdf) return
+    const element = contentRef.current
+    if (!element) return
 
-    const renderPage = async () => {
-      try {
-        const page = await pdf.getPage(currentPage)
-        const viewport = page.getViewport({ scale: zoom / 100 })
-
-        const canvas = document.createElement('canvas')
-        const context = canvas.getContext('2d')
-
-        canvas.width = viewport.width
-        canvas.height = viewport.height
-
-        await page.render({
-          canvasContext: context,
-          viewport: viewport
-        }).promise
-
-        setPageCanvas(canvas.toDataURL())
-      } catch (err) {
-        console.error('Error rendering page:', err)
-      }
+    const updateWidth = () => {
+      const width = Math.max(280, Math.min(1040, element.clientWidth - 32))
+      setPageWidth(width)
     }
 
-    renderPage()
-  }, [pdf, currentPage, zoom])
+    updateWidth()
+    const observer = new ResizeObserver(updateWidth)
+    observer.observe(element)
+
+    return () => observer.disconnect()
+  }, [])
+
+  const onDocumentLoadSuccess = useCallback((document) => {
+    setNumPages(document.numPages)
+    setCurrentPage(1)
+    setIsLoading(false)
+  }, [])
+
+  const onDocumentLoadError = useCallback((loadError) => {
+    console.error('PdfViewer load error:', loadError)
+    setError(loadError?.message || 'Erro ao carregar PDF')
+    setIsLoading(false)
+  }, [])
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -312,16 +285,18 @@ export function PdfViewer({ pdfUrl, fileName, onClose }) {
   }
 
   const handlePrevPage = () => {
-    setCurrentPage(prev => Math.max(1, prev - 1))
+    setCurrentPage((prev) => Math.max(1, prev - 1))
   }
 
   const handleNextPage = () => {
-    setCurrentPage(prev => Math.min(totalPages, prev + 1))
+    setCurrentPage((prev) => Math.min(numPages, prev + 1))
   }
 
   const handleZoom = (delta) => {
-    setZoom(prev => Math.max(50, Math.min(300, prev + delta)))
+    setZoom((prev) => Math.max(0.5, Math.min(3, prev + delta)))
   }
+
+  const pageDisplayWidth = pageWidth ? Math.floor(pageWidth * zoom) : undefined
 
   return (
     <PdfBackdrop onClick={handleBackdropClick}>
@@ -331,23 +306,23 @@ export function PdfViewer({ pdfUrl, fileName, onClose }) {
           <PdfControls>
             <ZoomControls>
               <PdfButton
-                onClick={() => handleZoom(-10)}
-                disabled={zoom <= 50}
+                onClick={() => handleZoom(-0.25)}
+                disabled={zoom <= 0.5}
                 title="Zoom out"
               >
                 −
               </PdfButton>
-              <ZoomValue>{zoom}%</ZoomValue>
+              <ZoomValue>{Math.round(zoom * 100)}%</ZoomValue>
               <PdfButton
-                onClick={() => handleZoom(10)}
-                disabled={zoom >= 300}
+                onClick={() => handleZoom(0.25)}
+                disabled={zoom >= 3}
                 title="Zoom in"
               >
                 +
               </PdfButton>
             </ZoomControls>
 
-            {totalPages > 1 && (
+            {numPages > 1 && (
               <>
                 <PdfButton
                   onClick={handlePrevPage}
@@ -356,10 +331,10 @@ export function PdfViewer({ pdfUrl, fileName, onClose }) {
                 >
                   ◀
                 </PdfButton>
-                <PageInfo>{currentPage} / {totalPages}</PageInfo>
+                <PageInfo>{currentPage} / {numPages}</PageInfo>
                 <PdfButton
                   onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === numPages}
                   title="Próxima página"
                 >
                   ▶
@@ -376,16 +351,37 @@ export function PdfViewer({ pdfUrl, fileName, onClose }) {
           </PdfControls>
         </PdfHeader>
 
-        <PdfContent>
-          {isLoading || !pageCanvas ? (
-            <LoadingSpinner />
+        <PdfContent ref={contentRef}>
+          {error ? (
+            <div style={{ color: '#D72638', textAlign: 'center', padding: '20px' }}>
+              <div style={{ fontSize: '1.2rem', marginBottom: '12px' }}>❌ Erro ao carregar PDF</div>
+              <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>{error}</div>
+            </div>
           ) : (
             <CanvasContainer>
-              <img
-                src={pageCanvas}
-                alt={`Page ${currentPage}`}
-                style={{ display: 'block' }}
-              />
+              <Document
+                file={pdfUrl}
+                onLoadSuccess={onDocumentLoadSuccess}
+                onLoadError={onDocumentLoadError}
+                loading={<LoadingSpinner />}
+                error={
+                  <div style={{ color: '#D72638', textAlign: 'center', padding: '20px' }}>
+                    <div style={{ fontSize: '1rem', marginBottom: '8px' }}>Erro ao renderizar PDF</div>
+                    <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>{error || 'Verifique o arquivo ou a conexão.'}</div>
+                  </div>
+                }
+                options={{
+                  cMapUrl: new URL('pdfjs-dist/cmaps/', import.meta.url).toString(),
+                  cMapPacked: true
+                }}
+              >
+                <Page
+                  pageNumber={currentPage}
+                  width={pageDisplayWidth}
+                  renderAnnotationLayer={false}
+                  renderTextLayer={false}
+                />
+              </Document>
             </CanvasContainer>
           )}
         </PdfContent>
