@@ -1,44 +1,35 @@
 import styled from 'styled-components'
 import { FileIcon } from './FileIcon'
-import { PdfThumbnail } from './PdfThumbnail'
-import { formatFileSize, formatDateShort, isPDF, isImage } from '../utils/fileHelpers'
+import { formatFileSize, formatDateShort } from '../utils/fileHelpers'
 
 const CardWrapper = styled.div`
   background: rgba(11, 15, 20, 0.6);
   border: 1px solid rgba(255, 106, 0, 0.2);
   border-radius: 8px;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
   height: 100%;
-  position: relative;
 
   &:hover {
     border-color: rgba(255, 106, 0, 0.5);
     background: rgba(11, 15, 20, 0.8);
-    box-shadow: 0 12px 32px rgba(255, 106, 0, 0.2);
-    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(255, 106, 0, 0.15);
+    transform: translateY(-2px);
   }
 `
 
 const PreviewSection = styled.div`
   position: relative;
   width: 100%;
-  flex: 1;
-  min-height: 300px;
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, rgba(255, 106, 0, 0.05) 0%, rgba(255, 106, 0, 0.02) 100%);
+  border-bottom: 1px solid rgba(255, 106, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(255, 106, 0, 0.05) 0%, rgba(255, 106, 0, 0.02) 100%);
-  border-bottom: 1px solid rgba(255, 106, 0, 0.1);
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: linear-gradient(135deg, rgba(255, 106, 0, 0.08) 0%, rgba(255, 106, 0, 0.04) 100%);
-  }
 
   img {
     width: 100%;
@@ -59,7 +50,7 @@ const ContentSection = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: rgba(11, 15, 20, 0.4);
+  flex: 1;
 `
 
 const FileName = styled.h3`
@@ -86,17 +77,10 @@ const MetaItem = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
 
   strong {
     color: #FF6A00;
     opacity: 0.8;
-    flex-shrink: 0;
-  }
-
-  span {
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 `
 
@@ -106,7 +90,6 @@ const ActionsSection = styled.div`
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   border-top: 1px solid rgba(255, 106, 0, 0.1);
-  background: rgba(11, 15, 20, 0.2);
 `
 
 const ActionButton = styled.button`
@@ -136,7 +119,6 @@ const ActionButton = styled.button`
         : 'rgba(255, 106, 0, 0.2)'};
     border-color: ${(props) =>
       props.danger ? '#D72638' : '#FF6A00'};
-    transform: translateY(-1px);
   }
 
   &:disabled {
@@ -172,13 +154,14 @@ export function DocumentCard({
   onView,
   onDownload,
   onDelete,
-  isLoading = false
+  previewUrl,
+  isLoading = false,
+  isImagePreview = false
 }) {
   const fileName = document.title || document.name || 'Sem nome'
   const fileSize = document.size || document.file_size
   const createdAt = document.created_at || document.date
   const category = document.category || 'Geral'
-  const fileUrl = document.file_url
 
   const handleView = async () => {
     if (onView && !isLoading) {
@@ -198,16 +181,11 @@ export function DocumentCard({
     }
   }
 
-  const shouldShowPdfThumbnail = isPDF(fileName) && fileUrl
-  const shouldShowImagePreview = isImage(fileName) && fileUrl
-
   return (
     <CardWrapper>
-      <PreviewSection onClick={handleView} title="Clique para visualizar">
-        {shouldShowPdfThumbnail ? (
-          <PdfThumbnail pdfUrl={fileUrl} fileName={fileName} />
-        ) : shouldShowImagePreview ? (
-          <img src={fileUrl} alt={fileName} loading="lazy" />
+      <PreviewSection>
+        {isImagePreview && previewUrl ? (
+          <img src={previewUrl} alt={fileName} loading="lazy" />
         ) : (
           <IconPlaceholder>
             <FileIcon fileName={fileName} size={64} />

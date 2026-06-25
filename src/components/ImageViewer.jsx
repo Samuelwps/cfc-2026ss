@@ -10,10 +10,10 @@ const fadeIn = keyframes`
   }
 `
 
-const PdfBackdrop = styled.div`
+const ImageBackdrop = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -23,50 +23,48 @@ const PdfBackdrop = styled.div`
   backdrop-filter: blur(2px);
 `
 
-const PdfModalWrapper = styled.div`
-  background: #0B0F14;
-  border: 1px solid rgba(255, 106, 0, 0.3);
-  border-radius: 8px;
+const ImageModalWrapper = styled.div`
   width: 100%;
-  height: 90vh;
-  max-width: 1200px;
+  height: auto;
+  max-width: 90vw;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-  overflow: hidden;
+  position: relative;
 
   @media (max-width: 768px) {
-    height: 95vh;
     max-width: 100%;
+    max-height: 100%;
   }
 `
 
-const PdfHeader = styled.div`
+const ImageHeader = styled.div`
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 106, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(11, 15, 20, 0.8);
+  background: rgba(11, 15, 20, 0.9);
+  border-bottom: 1px solid rgba(255, 106, 0, 0.2);
+  border-radius: 8px 8px 0 0;
 `
 
-const PdfTitle = styled.h2`
+const ImageTitle = styled.h2`
   margin: 0;
   color: #FF6A00;
-  font-size: 1rem;
+  font-size: 0.95rem;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 `
 
-const PdfControls = styled.div`
+const ImageControls = styled.div`
   display: flex;
   gap: 8px;
   align-items: center;
 `
 
-const PdfButton = styled.button`
+const ImageButton = styled.button`
   padding: 6px 12px;
   background: rgba(255, 106, 0, 0.1);
   border: 1px solid rgba(255, 106, 0, 0.3);
@@ -75,16 +73,10 @@ const PdfButton = styled.button`
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.2s;
-  white-space: nowrap;
 
   &:hover {
     background: rgba(255, 106, 0, 0.2);
     border-color: #FF6A00;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 
   @media (max-width: 768px) {
@@ -93,7 +85,7 @@ const PdfButton = styled.button`
   }
 `
 
-const PdfCloseButton = styled.button`
+const ImageCloseButton = styled.button`
   background: none;
   border: none;
   color: #FF6A00;
@@ -113,16 +105,19 @@ const PdfCloseButton = styled.button`
   }
 `
 
-const PdfContent = styled.div`
-  flex: 1;
-  overflow: auto;
+const ImageContainer = styled.div`
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 0 0 8px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  overflow: auto;
+  flex: 1;
+  min-height: 300px;
 
   &::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
   }
 
   &::-webkit-scrollbar-track {
@@ -139,11 +134,11 @@ const PdfContent = styled.div`
   }
 `
 
-const PdfIframe = styled.iframe`
-  border: none;
-  width: 100%;
-  height: 100%;
-  background: #0B0F14;
+const ImageElement = styled.img`
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
 `
 
 const LoadingSpinner = styled.div`
@@ -162,12 +157,13 @@ const LoadingSpinner = styled.div`
   }
 `
 
-export function PdfViewer({ pdfUrl, fileName, onClose }) {
+export function ImageViewer({ imageUrl, fileName, onClose }) {
   const [isLoading, setIsLoading] = useState(true)
+  const [zoom, setZoom] = useState(100)
 
   useEffect(() => {
     setIsLoading(true)
-  }, [pdfUrl])
+  }, [imageUrl])
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -175,11 +171,15 @@ export function PdfViewer({ pdfUrl, fileName, onClose }) {
     }
   }
 
+  const handleZoom = (delta) => {
+    setZoom((prev) => Math.max(50, Math.min(300, prev + delta)))
+  }
+
   const handleDownload = () => {
-    if (pdfUrl) {
+    if (imageUrl) {
       const link = document.createElement('a')
-      link.href = pdfUrl
-      link.download = fileName || 'documento.pdf'
+      link.href = imageUrl
+      link.download = fileName || 'imagem'
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -187,30 +187,40 @@ export function PdfViewer({ pdfUrl, fileName, onClose }) {
   }
 
   return (
-    <PdfBackdrop onClick={handleBackdropClick}>
-      <PdfModalWrapper onClick={(e) => e.stopPropagation()}>
-        <PdfHeader>
-          <PdfTitle title={fileName}>{fileName}</PdfTitle>
-          <PdfControls>
-            <PdfButton onClick={handleDownload} disabled={isLoading}>
-              ⬇ Download
-            </PdfButton>
-            <PdfCloseButton onClick={onClose} title="Fechar">
+    <ImageBackdrop onClick={handleBackdropClick}>
+      <ImageModalWrapper onClick={(e) => e.stopPropagation()}>
+        <ImageHeader>
+          <ImageTitle title={fileName}>{fileName}</ImageTitle>
+          <ImageControls>
+            <ImageButton onClick={() => handleZoom(-10)} disabled={zoom <= 50}>
+              −
+            </ImageButton>
+            <span style={{ color: '#FF6A00', fontSize: '0.9rem', minWidth: '45px', textAlign: 'center' }}>
+              {zoom}%
+            </span>
+            <ImageButton onClick={() => handleZoom(10)} disabled={zoom >= 300}>
+              +
+            </ImageButton>
+            <ImageButton onClick={handleDownload}>⬇</ImageButton>
+            <ImageCloseButton onClick={onClose} title="Fechar">
               ✕
-            </PdfCloseButton>
-          </PdfControls>
-        </PdfHeader>
+            </ImageCloseButton>
+          </ImageControls>
+        </ImageHeader>
 
-        <PdfContent>
+        <ImageContainer>
           {isLoading && <LoadingSpinner />}
-          <PdfIframe
-            src={pdfUrl}
-            title={`PDF: ${fileName}`}
+          <ImageElement
+            src={imageUrl}
+            alt={fileName}
             onLoad={() => setIsLoading(false)}
-            style={{ display: isLoading ? 'none' : 'block' }}
+            style={{
+              display: isLoading ? 'none' : 'block',
+              transform: `scale(${zoom / 100})`
+            }}
           />
-        </PdfContent>
-      </PdfModalWrapper>
-    </PdfBackdrop>
+        </ImageContainer>
+      </ImageModalWrapper>
+    </ImageBackdrop>
   )
 }

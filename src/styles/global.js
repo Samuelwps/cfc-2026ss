@@ -14,10 +14,13 @@ export const GlobalStyles = createGlobalStyle`
 
   * {
     box-sizing: border-box;
+    max-width: 100%;
   }
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
+    width: 100%;
   }
 
   body {
@@ -27,6 +30,8 @@ export const GlobalStyles = createGlobalStyle`
     background-attachment: fixed;
     color: #E8EAED;
     letter-spacing: 0.3px;
+    overflow-x: hidden;
+    width: 100%;
   }
 
   button,
@@ -52,10 +57,11 @@ export const GlobalStyles = createGlobalStyle`
     border: 1px solid #2E3B2F;
     background: rgba(11, 15, 20, 0.9);
     color: #E8EAED;
-    border-radius: 0;
+    border-radius: 4px;
     padding: 10px 12px;
     transition: all 0.2s linear;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+    width: 100%;
 
     &:focus {
       outline: none;
@@ -77,6 +83,7 @@ export const GlobalStyles = createGlobalStyle`
     background: rgba(255, 106, 0, 0.4);
     color: #E8EAED;
   }
+
 
   ::-webkit-scrollbar {
     width: 10px;
