@@ -489,18 +489,21 @@ export default function Documents() {
     } finally {
       setLoading(false)
     }
+  }
 
+  const handleDownload = useCallback(
+    async (doc) => {
       const actionKey = `download-${doc.id}`
 
       try {
         setLoadingActions(prev => new Set([...prev, actionKey]))
 
-        console.log('⬇️ Downloading file:', { fileName, url: doc.file_url.substring(0, 50) + '...' })
+        console.log('⬇️ Downloading file:', { fileName: doc.title || 'arquivo', url: doc.file_url?.substring(0, 50) + '...' })
 
         let downloadUrl = doc.file_url
 
         // If it's already a full HTTP(S) URL, use it directly
-        if (downloadUrl.startsWith('http')) {
+        if (downloadUrl && downloadUrl.startsWith('http')) {
           console.log('✅ Using public URL directly for download')
         } else {
           // Legacy: if it's just a filename, try to download from storage
@@ -523,19 +526,19 @@ export default function Documents() {
         console.log('📥 Creating download link')
         const link = document.createElement('a')
         link.href = downloadUrl
-        link.download = fileName
+        link.download = doc.title || 'arquivo'
         document.body.appendChild(link)
         link.click()
         link.remove()
 
-        console.log('✅ Download initiated for:', fileName)
+        console.log('✅ Download initiated for:', doc.title || 'arquivo')
 
         // Clean up blob URL if it's temporary
-        if (downloadUrl.startsWith('blob:') && !doc.file_url.startsWith('blob:')) {
+        if (downloadUrl && downloadUrl.startsWith('blob:') && !doc.file_url?.startsWith('blob:')) {
           setTimeout(() => URL.revokeObjectURL(downloadUrl), 100)
         }
 
-        success(`Download iniciado: ${fileName}`)
+        success(`Download iniciado: ${doc.title || 'arquivo'}`)
       } catch (err) {
         console.error('Download error:', err)
         showError('Erro ao baixar arquivo')
