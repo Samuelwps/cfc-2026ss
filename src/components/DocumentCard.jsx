@@ -1,6 +1,7 @@
 import styled from 'styled-components'
+import { PdfThumbnail } from './PdfThumbnail'
 import { FileIcon } from './FileIcon'
-import { formatFileSize, formatDateShort } from '../utils/fileHelpers'
+import { formatFileSize, formatDateShort, getFileType } from '../utils/fileHelpers'
 
 const CardWrapper = styled.div`
   background: rgba(11, 15, 20, 0.6);
@@ -162,6 +163,9 @@ export function DocumentCard({
   const fileSize = document.size || document.file_size
   const createdAt = document.created_at || document.date
   const category = document.category || 'Geral'
+  const fileType = getFileType(fileName)
+  const isPdf = fileType === 'pdf'
+  const isImage = fileType === 'image'
 
   const handleView = async () => {
     if (onView && !isLoading) {
@@ -184,7 +188,9 @@ export function DocumentCard({
   return (
     <CardWrapper>
       <PreviewSection>
-        {isImagePreview && previewUrl ? (
+        {isPdf && previewUrl ? (
+          <PdfThumbnail pdfUrl={previewUrl} fileName={fileName} />
+        ) : isImage && previewUrl ? (
           <img src={previewUrl} alt={fileName} loading="lazy" />
         ) : (
           <IconPlaceholder>

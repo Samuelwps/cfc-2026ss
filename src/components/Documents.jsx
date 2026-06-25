@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 import styled from 'styled-components'
 import { supabase } from '../lib/supabase'
+import { useToast } from '../contexts/ToastContext'
+import { DocumentCard } from './DocumentCard'
+import { PdfViewer } from './PdfViewer'
+import { sanitizeFileName } from '../utils/fileHelpers'
 
 const DocumentsContainer = styled.main`
   width: min(1200px, 100%);
@@ -69,16 +73,43 @@ const SearchInput = styled.input`
   }
 `
 
+const UploadGroup = styled.div`
+  display: grid;
+  gap: 14px;
+`
+
+const UploadSelect = styled.select`
+  width: 100%;
+  max-width: 360px;
+  padding: 12px 16px;
+  border: 1px solid #2E3B2F;
+  border-left: 3px solid #FF6A00;
+  background: rgba(11, 15, 20, 0.9);
+  color: #FF6A00;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+
+  option {
+    background: #0B0F14;
+    color: #FF6A00;
+  }
+`
+
 const UploadButton = styled.label`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   padding: 12px 24px;
-  background: linear-gradient(135deg, #FF6A00, #E55A00);
   border: none;
   border-radius: 0;
+  background: linear-gradient(135deg, #FF6A00, #E55A00);
   color: #0B0F14;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s linear;
-  white-space: nowrap;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   box-shadow: 0 0 15px rgba(255, 106, 0, 0.3);
@@ -128,120 +159,25 @@ const CategoryTag = styled.button`
 const DocumentsGrid = styled.div`
   display: grid;
   gap: 20px;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 
   @media (max-width: 720px) {
     grid-template-columns: 1fr;
   }
 `
 
-const DocumentCard = styled.div`
-  padding: 24px;
-  border: 2px solid #FF6A00;
-  border-radius: 0;
-  background: rgba(11, 15, 20, 0.95);
-  display: grid;
-  gap: 16px;
-  transition: all 0.2s linear;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 106, 0, 0.15);
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #FF6A00, transparent);
-  }
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 15px 50px rgba(255, 106, 0, 0.3), inset 0 1px 0 rgba(255, 106, 0, 0.1);
-    border-color: #FF7A20;
-  }
-`
-
-const DocumentTitle = styled.h3`
+const StatusHelp = styled.p`
   margin: 0;
-  color: #FF6A00;
-  font-size: 1.2rem;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 10px rgba(255, 106, 0, 0.2);
-  text-transform: uppercase;
-`
-
-const DocumentMeta = styled.div`
-  display: grid;
-  gap: 8px;
-  font-size: 0.9rem;
   color: #7a8088;
+  font-size: 0.95rem;
+  letter-spacing: 0.4px;
 `
 
-const MetaItem = styled.span`
-  display: flex;
-  gap: 8px;
-  align-items: center;
-
-  strong {
-    color: #FF6A00;
-    min-width: 100px;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-  }
-`
-
-const DocumentActions = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 12px;
-`
-
-const ActionButton = styled.button`
-  padding: 10px 16px;
-  border: 1px solid ${(props) => (props.primary ? '#FF6A00' : '#2E3B2F')};
-  border-radius: 0;
-  background: ${(props) => (props.primary ? 'rgba(255, 106, 0, 0.15)' : 'transparent')};
-  color: ${(props) => (props.primary ? '#FF6A00' : '#7a8088')};
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
-  transition: all 0.2s linear;
-  font-weight: 600;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-
-  &:hover {
-    background: rgba(255, 106, 0, 0.25);
-    border-color: #FF6A00;
-    color: #FF6A00;
-    box-shadow: 0 0 10px rgba(255, 106, 0, 0.2);
-    transform: translateY(-1px);
-  }
-`
-
-const DeleteButton = styled.button`
-  padding: 10px 16px;
-  border: 1px solid #D72638;
-  border-radius: 0;
-  background: transparent;
-  color: #D72638;
-  cursor: pointer;
-  transition: all 0.2s linear;
-  font-weight: 600;
-  font-size: 0.9rem;
-  grid-column: 1 / -1;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-
-  &:hover {
-    background: rgba(215, 38, 56, 0.15);
-    transform: translateY(-1px);
-    box-shadow: 0 0 10px rgba(215, 38, 56, 0.2);
-  }
+const ResultCount = styled.p`
+  margin: 0;
+  color: #7a8088;
+  font-size: 0.95rem;
+  letter-spacing: 0.4px;
 `
 
 const EmptyState = styled.div`
@@ -271,51 +207,6 @@ const LoadingSpinner = styled.div`
   }
 `
 
-// PDF viewer styles
-const PdfBackdrop = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1100;
-  padding: 18px;
-`
-
-const PdfModal = styled.div`
-  background: #0B0F14;
-  border: 2px solid #FF6A00;
-  width: 100%;
-  max-width: 1000px;
-  height: 88vh;
-  border-radius: 6px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: 0 30px 60px rgba(0,0,0,0.75);
-  display: flex;
-  flex-direction: column;
-`
-
-const PdfClose = styled.button`
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  background: transparent;
-  border: none;
-  color: #E8EAED;
-  font-size: 1.25rem;
-  cursor: pointer;
-  z-index: 1110;
-`
-
-const PdfIframe = styled.iframe`
-  border: none;
-  width: 100%;
-  height: 100%;
-  background: #0B0F14;
-`
-
 const categories = [
   'Ordens do Dia',
   'Escalas',
@@ -329,57 +220,35 @@ export default function Documents() {
   const [documents, setDocuments] = useState([])
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [uploadCategory, setUploadCategory] = useState(categories[0])
   const [isLoadingData, setIsLoadingData] = useState(true)
+  const [isUploading, setIsUploading] = useState(false)
+  const [viewerUrl, setViewerUrl] = useState(null)
+  const [viewerDoc, setViewerDoc] = useState(null)
+  const [isViewing, setIsViewing] = useState(false)
+  const [isViewLoading, setIsViewLoading] = useState(false)
+  const { success, error: toastError, info } = useToast()
 
-  // PDF viewer state
-  const [showPdf, setShowPdf] = useState(false)
-  const [pdfUrl, setPdfUrl] = useState(null)
-  const [isPdfLoading, setIsPdfLoading] = useState(false)
+  useEffect(() => {
+    fetchDocuments()
+  }, [])
 
-  const closePdf = () => {
-    setShowPdf(false)
-    if (pdfUrl) {
-      try { URL.revokeObjectURL(pdfUrl) } catch (e) {}
-    }
-    setPdfUrl(null)
-    setIsPdfLoading(false)
-  }
-
-  const handleView = async (doc) => {
-    if (!doc || !doc.file_url) {
-      alert('Arquivo não disponível para visualização')
-      return
-    }
-
-    // If public URL, open in new tab
-    if (doc.file_url.startsWith('http')) {
-      window.open(doc.file_url, '_blank')
-      return
-    }
-
-    // Otherwise treat as storage path and download blob for viewing
-    setIsPdfLoading(true)
-    try {
-      const bucket = 'documents'
-      const path = doc.file_url
-      const { data, error } = await supabase.storage.from(bucket).download(path)
-      if (error) {
-        console.error('Download error:', error)
-        alert('Erro ao carregar PDF: ' + error.message)
-        setIsPdfLoading(false)
-        return
+  useEffect(() => {
+    return () => {
+      if (viewerUrl && viewerUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(viewerUrl)
       }
-
-      const url = URL.createObjectURL(data)
-      setPdfUrl(url)
-      setShowPdf(true)
-    } catch (err) {
-      console.error('View exception:', err)
-      alert('Erro ao carregar PDF: ' + err.message)
-    } finally {
-      setIsPdfLoading(false)
     }
+  }, [viewerUrl])
+
+  const getPreviewUrl = (doc) => {
+    if (!doc?.file_url) return null
+    if (doc.file_url.startsWith('http')) {
+      return doc.file_url
+    }
+
+    const { data } = supabase.storage.from('documents').getPublicUrl(doc.file_url)
+    return data?.publicUrl || null
   }
 
   const fetchDocuments = async () => {
@@ -391,115 +260,150 @@ export default function Documents() {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Supabase error:', error)
-        alert('Erro ao buscar documentos: ' + error.message)
-        return
+        throw error
       }
 
       setDocuments(data || [])
-    } catch (error) {
-      console.error('Erro ao buscar documentos:', error)
-      alert('Erro ao buscar documentos: ' + error.message)
+    } catch (err) {
+      console.error('Erro ao buscar documentos:', err)
+      toastError('Erro ao buscar documentos')
+      setDocuments([])
     } finally {
       setIsLoadingData(false)
     }
   }
 
-  useEffect(() => {
-    fetchDocuments()
-  }, [])
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0]
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0]
     if (!file) return
 
-    // Only allow PDF files
     if (!file.type.includes('pdf')) {
-      alert('Por favor, selecione apenas arquivos PDF')
+      toastError('Por favor, selecione apenas arquivos PDF')
+      event.target.value = ''
       return
     }
 
-    // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('O arquivo é muito grande. Máximo: 10MB')
+      toastError('O arquivo é muito grande. Máximo: 10MB')
+      event.target.value = ''
       return
     }
 
-    const category = prompt('Selecione a categoria:\n\n' + categories.join('\n'))
-    if (!category || !categories.includes(category)) {
-      alert('Categoria inválida')
+    if (!uploadCategory) {
+      toastError('Selecione uma categoria antes de enviar')
+      event.target.value = ''
       return
     }
 
-    setLoading(true)
+    setIsUploading(true)
 
     try {
-      const fileName = `${Date.now()}-${file.name}`
-
-      // Upload file object directly to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const fileName = `${Date.now()}-${sanitizeFileName(file.name)}`
+      const { error: uploadError } = await supabase.storage
         .from('documents')
         .upload(fileName, file, { contentType: file.type, upsert: false })
 
       if (uploadError) {
-        console.error('Upload error:', uploadError)
-        alert('Erro ao fazer upload: ' + uploadError.message)
-        setLoading(false)
-        e.target.value = ''
-        return
+        throw uploadError
       }
 
-      // Get public URL
-      const { data: publicUrlData, error: publicUrlError } = await supabase.storage
-        .from('documents')
-        .getPublicUrl(fileName)
-
-      if (publicUrlError) {
-        console.error('Public URL error:', publicUrlError)
-      }
-
-      const file_url = publicUrlData?.publicUrl || ''
-
-      // Store the storage path (fileName) in the DB as file_url for portability
       const { error: dbError } = await supabase
         .from('documents')
         .insert([
           {
             title: file.name,
-            description: `PDF document - ${category}`,
+            description: uploadCategory,
             file_url: fileName,
-            category: category
+            category: uploadCategory
           }
         ])
 
       if (dbError) {
-        console.error('Database error:', dbError)
-        alert('Erro ao salvar documento: ' + dbError.message)
-        setLoading(false)
-        e.target.value = ''
-        return
+        throw dbError
       }
 
       await fetchDocuments()
-      alert('Documento enviado com sucesso!')
-      e.target.value = ''
-    } catch (error) {
-      console.error('Error:', error)
-      alert('Erro ao enviar documento: ' + error.message)
+      success('Documento enviado com sucesso!')
+    } catch (err) {
+      console.error('Upload falhou:', err)
+      toastError('Erro ao enviar documento')
     } finally {
-      setLoading(false)
+      setIsUploading(false)
+      event.target.value = ''
     }
   }
 
+  const handleView = async (doc) => {
+    if (!doc?.file_url) {
+      toastError('Arquivo não disponível para visualização')
+      return
+    }
+
+    setIsViewLoading(true)
+
+    try {
+      if (doc.file_url.startsWith('http')) {
+        setViewerUrl(doc.file_url)
+        setViewerDoc(doc)
+        setIsViewing(true)
+        return
+      }
+
+      const { data, error } = await supabase.storage.from('documents').download(doc.file_url)
+      if (error) {
+        throw error
+      }
+
+      const url = URL.createObjectURL(data)
+      setViewerUrl(url)
+      setViewerDoc(doc)
+      setIsViewing(true)
+    } catch (err) {
+      console.error('Visualização falhou:', err)
+      toastError('Erro ao carregar o documento para visualização')
+    } finally {
+      setIsViewLoading(false)
+    }
+  }
+
+  const handleDownload = async (doc) => {
+    if (!doc?.file_url) {
+      toastError('URL do arquivo não disponível')
+      return
+    }
+
+    try {
+      if (doc.file_url.startsWith('http')) {
+        window.open(doc.file_url, '_blank')
+        return
+      }
+
+      const { data, error } = await supabase.storage.from('documents').download(doc.file_url)
+      if (error) {
+        throw error
+      }
+
+      const url = URL.createObjectURL(data)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = doc.title || doc.file_url.split('/').pop()
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Download falhou:', err)
+      toastError('Erro ao baixar o documento')
+    }
+  }
 
   const handleDelete = async (id) => {
     if (!id) return
-    if (!confirm('Tem certeza que deseja deletar este documento?')) return
+    if (!window.confirm('Tem certeza que deseja deletar este documento?')) return
 
     try {
-      // Find document to get file_url/path before deleting DB record
-      const doc = documents.find((d) => d.id === id)
-      const filePath = doc?.file_url || null
+      const doc = documents.find((item) => item.id === id)
+      const filePath = doc?.file_url
 
       const { error } = await supabase
         .from('documents')
@@ -507,95 +411,42 @@ export default function Documents() {
         .eq('id', id)
 
       if (error) {
-        console.error('Supabase error (delete record):', error)
-        alert('Erro ao deletar documento: ' + error.message)
-        return
+        throw error
       }
 
-      // Delete file from storage if exists
       if (filePath) {
-        // Determine storage path
         let bucket = 'documents'
         let path = filePath
 
-        // If filePath looks like a full URL, try to extract the path
-        try {
-          if (filePath.startsWith('http')) {
-            const u = new URL(filePath)
-            // URL path like /storage/v1/object/public/{bucket}/{path}
-            const parts = u.pathname.split('/')
-            const idx = parts.indexOf('public')
-            if (idx >= 0 && parts.length > idx + 2) {
-              bucket = parts[idx + 1]
-              path = parts.slice(idx + 2).join('/')
-            } else {
-              // fallback: assume last segment is filename
-              path = parts.slice(-1)[0]
-            }
+        if (filePath.startsWith('http')) {
+          const url = new URL(filePath)
+          const parts = url.pathname.split('/')
+          const publicIndex = parts.indexOf('public')
+          if (publicIndex >= 0 && parts.length > publicIndex + 2) {
+            bucket = parts[publicIndex + 1]
+            path = parts.slice(publicIndex + 2).join('/')
+          } else {
+            path = parts.slice(-1)[0]
           }
+        }
 
-          const { error: storageError } = await supabase.storage
-            .from(bucket)
-            .remove([path])
-
-          if (storageError) {
-            console.error('Storage delete error:', storageError)
-            // don't block the flow; just notify
-            alert('Documento removido do banco, mas falha ao remover arquivo no storage: ' + storageError.message)
-          }
-        } catch (err) {
-          console.error('Error removing file from storage:', err)
+        const { error: storageError } = await supabase.storage.from(bucket).remove([path])
+        if (storageError) {
+          console.warn('Remoção no storage falhou:', storageError)
+          info('Documento removido do banco, mas falha ao remover o arquivo no storage')
         }
       }
 
       await fetchDocuments()
-      alert('Documento deletado com sucesso!')
-    } catch (error) {
-      console.error('Erro ao deletar documento:', error)
-      alert('Erro ao deletar documento: ' + error.message)
-    }
-  }
-
-  const handleDownload = async (file_url, fileName) => {
-    if (!file_url) {
-      alert('URL do arquivo não disponível')
-      return
-    }
-
-    try {
-      // If stored as a full public URL, open it
-      if (file_url.startsWith('http')) {
-        window.open(file_url, '_blank')
-        return
-      }
-
-      // Otherwise treat file_url as storage path
-      const bucket = 'documents'
-      const path = file_url
-
-      const { data, error } = await supabase.storage.from(bucket).download(path)
-      if (error) {
-        console.error('Download error:', error)
-        alert('Erro ao baixar arquivo: ' + error.message)
-        return
-      }
-
-      const url = URL.createObjectURL(data)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = fileName || path.split('/').pop()
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
+      success('Documento deletado com sucesso!')
     } catch (err) {
-      console.error('Download exception:', err)
-      alert('Erro ao baixar arquivo: ' + err.message)
+      console.error('Erro ao deletar documento:', err)
+      toastError('Erro ao deletar documento')
     }
   }
 
   const filteredDocuments = documents.filter((doc) => {
-    const matchSearch = doc.title.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = doc.title?.toLowerCase().includes(search.toLowerCase())
     const matchCategory = !selectedCategory || doc.category === selectedCategory
     return matchSearch && matchCategory
   })
@@ -608,42 +459,56 @@ export default function Documents() {
       </PageHeader>
 
       <ControlsSection>
-        <div style={{ display: 'grid', gap: '12px' }}>
+        <UploadGroup>
           <SearchInput
             type="text"
             placeholder="Buscar por nome do documento..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
           />
           <CategoryFilter>
-            <CategoryTag
-              active={!selectedCategory}
-              onClick={() => setSelectedCategory(null)}
-            >
+            <CategoryTag active={!selectedCategory} onClick={() => setSelectedCategory(null)}>
               Todos
             </CategoryTag>
-            {categories.map((cat) => (
+            {categories.map((category) => (
               <CategoryTag
-                key={cat}
-                active={selectedCategory === cat}
-                onClick={() => setSelectedCategory(cat)}
+                key={category}
+                active={selectedCategory === category}
+                onClick={() => setSelectedCategory(category)}
               >
-                {cat}
+                {category}
               </CategoryTag>
             ))}
           </CategoryFilter>
-        </div>
+        </UploadGroup>
 
-        <UploadButton htmlFor="file-upload" style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-          {loading ? <LoadingSpinner /> : '+'} ADICIONAR PDF
-        </UploadButton>
-        <HiddenInput
-          id="file-upload"
-          type="file"
-          accept=".pdf"
-          onChange={handleFileUpload}
-          disabled={loading}
-        />
+        <UploadGroup>
+          <UploadSelect
+            value={uploadCategory}
+            onChange={(event) => setUploadCategory(event.target.value)}
+            aria-label="Categoria para upload"
+          >
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </UploadSelect>
+
+          <UploadButton htmlFor="file-upload">
+            {isUploading ? <LoadingSpinner /> : '+'} ADICIONAR PDF
+          </UploadButton>
+
+          <HiddenInput
+            id="file-upload"
+            type="file"
+            accept=".pdf"
+            onChange={handleFileUpload}
+            disabled={isUploading}
+          />
+
+          <StatusHelp>Categoria selecionada: {uploadCategory}</StatusHelp>
+        </UploadGroup>
       </ControlsSection>
 
       {isLoadingData ? (
@@ -651,58 +516,43 @@ export default function Documents() {
           <p>Carregando documentos...</p>
         </EmptyState>
       ) : filteredDocuments.length > 0 ? (
-        <DocumentsGrid>
-          {filteredDocuments.map((doc) => (
-            <DocumentCard key={doc.id}>
-              <div>
-                <DocumentTitle>{doc.title}</DocumentTitle>
-                <DocumentMeta>
-                  <MetaItem>
-                    <strong>Categoria:</strong> {doc.category}
-                  </MetaItem>
-                  <MetaItem>
-                    <strong>Data:</strong> {new Date(doc.created_at).toLocaleDateString('pt-BR')}
-                  </MetaItem>
-                </DocumentMeta>
-              </div>
-              <DocumentActions>
-                <ActionButton
-                  primary
-                  onClick={() => handleDownload(doc.file_url, doc.title)}
-                >
-                  📥 Download
-                </ActionButton>
-                <ActionButton
-                  onClick={() => handleView(doc)}
-                >
-                  👁️ Visualizar
-                </ActionButton>
-                <DeleteButton onClick={() => handleDelete(doc.id)}>
-                  🗑️ Deletar
-                </DeleteButton>
-              </DocumentActions>
-            </DocumentCard>
-          ))}
-        </DocumentsGrid>
+        <>
+          <ResultCount>
+            {filteredDocuments.length} documento{filteredDocuments.length === 1 ? '' : 's'} encontrado{filteredDocuments.length === 1 ? '' : 's'}
+          </ResultCount>
+          <DocumentsGrid>
+            {filteredDocuments.map((doc) => (
+              <DocumentCard
+                key={doc.id}
+                document={doc}
+                previewUrl={getPreviewUrl(doc)}
+                onView={handleView}
+                onDownload={handleDownload}
+                onDelete={handleDelete}
+                isLoading={isUploading || isViewLoading}
+              />
+            ))}
+          </DocumentsGrid>
+        </>
       ) : (
         <EmptyState>
           <p>Nenhum documento encontrado</p>
         </EmptyState>
       )}
 
-      {showPdf && (
-        <PdfBackdrop onClick={closePdf}>
-          <PdfModal onClick={(e) => e.stopPropagation()}>
-            <PdfClose onClick={closePdf}>✕</PdfClose>
-            {isPdfLoading ? (
-              <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}>
-                <LoadingSpinner />
-              </div>
-            ) : (
-              <PdfIframe src={pdfUrl} title="Visualizador PDF" />
-            )}
-          </PdfModal>
-        </PdfBackdrop>
+      {isViewing && viewerUrl && (
+        <PdfViewer
+          pdfUrl={viewerUrl}
+          fileName={viewerDoc?.title || 'Documento'}
+          onClose={() => {
+            setIsViewing(false)
+            if (viewerUrl && viewerUrl.startsWith('blob:')) {
+              URL.revokeObjectURL(viewerUrl)
+            }
+            setViewerUrl(null)
+            setViewerDoc(null)
+          }}
+        />
       )}
     </DocumentsContainer>
   )
