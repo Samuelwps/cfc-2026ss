@@ -436,77 +436,6 @@ export default function Documents() {
     try {
       const fileName = `${Date.now()}-${file.name}`
 
-<<<<<<< HEAD
-        // Upload to Supabase Storage
-        console.log('📤 Uploading file:', fileName)
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('documents')
-          .upload(fileName, file, { 
-            contentType: file.type,
-            upsert: false 
-          })
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError)
-          showError(`Erro ao fazer upload: ${uploadError.message}`)
-          e.target.value = ''
-          return
-        }
-
-        console.log('✅ File uploaded, getting public URL...')
-        
-        // Get PUBLIC URL for the file (not signed URL)
-        const { data: publicUrlData } = supabase.storage
-          .from('documents')
-          .getPublicUrl(fileName)
-        
-        const publicUrl = publicUrlData?.publicUrl
-        
-        if (!publicUrl) {
-          throw new Error('Could not generate public URL for file')
-        }
-        
-        console.log('✅ Public URL generated:', publicUrl.substring(0, 50) + '...')
-
-        // Get file size
-        const fileSize = file.size
-
-        // Insert into database with FULL public URL
-        const { error: dbError } = await supabase
-          .from('documents')
-          .insert([
-            {
-              title: file.name,
-              description: `Documento PDF - ${category}`,
-              file_url: publicUrl,
-              category,
-              size: fileSize,
-              mime_type: file.type
-            }
-          ])
-
-        if (dbError) {
-          console.error('Database error:', dbError)
-          
-          // Try to delete the uploaded file
-          await supabase.storage
-            .from('documents')
-            .remove([fileName])
-            .catch(err => console.error('Error cleanup:', err))
-
-          showError(`Erro ao salvar documento: ${dbError.message}`)
-          e.target.value = ''
-          return
-        }
-
-        await fetchDocuments()
-        success(`Documento "${file.name}" enviado com sucesso!`)
-        e.target.value = ''
-      } catch (err) {
-        console.error('Upload error:', err)
-        showError('Erro ao enviar documento')
-      } finally {
-=======
       // Upload file object directly to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('documents')
@@ -515,7 +444,6 @@ export default function Documents() {
       if (uploadError) {
         console.error('Upload error:', uploadError)
         alert('Erro ao fazer upload: ' + uploadError.message)
->>>>>>> parent of 3e1747d (teste responsive)
         setLoading(false)
         e.target.value = ''
         return
@@ -552,72 +480,16 @@ export default function Documents() {
         return
       }
 
-<<<<<<< HEAD
-      console.log('👁️ Viewing document:', { fileName, fileType, url: doc.file_url.substring(0, 50) + '...' })
-      setViewerState(prev => ({ ...prev, isLoading: true }))
+      await fetchDocuments()
+      alert('Documento enviado com sucesso!')
+      e.target.value = ''
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Erro ao enviar documento: ' + error.message)
+    } finally {
+      setLoading(false)
+    }
 
-      try {
-        let url = doc.file_url
-
-        // If the URL is already a full HTTP(S) URL, use it directly
-        // This is the best case - the PDF is stored on Supabase with public access
-        if (url.startsWith('http')) {
-          console.log('✅ Using public URL directly:', url.substring(0, 50) + '...')
-          
-          // Verify URL is accessible with a HEAD request
-          try {
-            const response = await fetch(url, { method: 'HEAD' })
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status}`)
-            }
-            console.log('✅ URL is accessible:', response.status)
-          } catch (err) {
-            console.warn('⚠️ URL test failed:', err.message)
-            // Continue anyway - the URL might still work
-          }
-        } else {
-          // Legacy: if it's just a filename, try to download and create blob URL
-          console.log('⚠️ File URL is not HTTP, attempting to download:', url)
-          const { data, error } = await supabase.storage
-            .from('documents')
-            .download(url)
-
-          if (error) {
-            console.error('Download error:', error)
-            showError(`Erro ao carregar arquivo: ${error.message}`)
-            setViewerState(prev => ({ ...prev, isLoading: false }))
-            return
-          }
-
-          url = URL.createObjectURL(data)
-          console.log('✅ Created blob URL from downloaded data')
-        }
-
-        console.log('📖 Opening viewer with URL:', url.substring(0, 50) + '...')
-        setViewerState({
-          type: fileType,
-          url,
-          fileName,
-          isLoading: false
-        })
-      } catch (err) {
-        console.error('View error:', err)
-        showError('Erro ao visualizar arquivo')
-        setViewerState(prev => ({ ...prev, isLoading: false }))
-      }
-    },
-    [showError]
-  )
-
-  // Handle download
-  const handleDownload = useCallback(
-    async (doc) => {
-      if (!doc?.file_url) {
-        showError('URL do arquivo não disponível')
-        return
-      }
-
-      const fileName = doc.title || 'arquivo'
       const actionKey = `download-${doc.id}`
 
       try {
@@ -765,17 +637,6 @@ export default function Documents() {
 
   const isActionLoading = (id, action) => {
     return loadingActions.has(`${action}-${id}`)
-=======
-      await fetchDocuments()
-      alert('Documento enviado com sucesso!')
-      e.target.value = ''
-    } catch (error) {
-      console.error('Error:', error)
-      alert('Erro ao enviar documento: ' + error.message)
-    } finally {
-      setLoading(false)
-    }
->>>>>>> parent of 3e1747d (teste responsive)
   }
 
   const handleDelete = async (id) => {
@@ -939,16 +800,6 @@ export default function Documents() {
       ) : filteredDocuments.length > 0 ? (
         <DocumentsGrid>
           {filteredDocuments.map((doc) => (
-<<<<<<< HEAD
-            <DocumentCard
-              key={doc.id}
-              document={doc}
-              onView={() => handleView(doc)}
-              onDownload={() => handleDownload(doc)}
-              onDelete={() => setDeleteConfirm(doc.id)}
-              isLoading={isActionLoading(doc.id, 'delete') || isActionLoading(doc.id, 'download')}
-            />
-=======
             <DocumentCard key={doc.id}>
               <div>
                 <DocumentTitle>{doc.title}</DocumentTitle>
@@ -978,7 +829,6 @@ export default function Documents() {
                 </DeleteButton>
               </DocumentActions>
             </DocumentCard>
->>>>>>> parent of 3e1747d (teste responsive)
           ))}
         </DocumentsGrid>
       ) : (
